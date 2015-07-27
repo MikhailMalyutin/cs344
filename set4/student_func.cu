@@ -100,52 +100,9 @@ __global__ void histogram(const unsigned int* const d_in,
     atomicAdd(&(d_res[binId]), 1);
 }
 
-__global__  void scan(const unsigned int* const d_in,
+__device__ void scanReduce(const unsigned int* const d_in,
                           unsigned int* const d_res,
-                          const size_t size) {
-    unsigned int tid = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
-    if (myId >=size) {
-        return;
-    }
-    d_res[myId] = d_in[myId];
-
-    unsigned int alignedSize = (size / 2) * 2;
-    for (unsigned int s = 2; s <= alignedSize; s *= 2) {
-        if (((myId+1) % s) == 0 && (myId >= s/2)) {
-            cudaDeviceSynchronize();
-            unsigned int prevId    = myId - s/2;
-            unsigned int prevValue = d_res[prevId];
-            unsigned int myValue   = d_res[myId];
-            __syncthreads();
-            d_res[myId] = myValue + prevValue;
-        }
-    }
-
-    __syncthreads();
-    d_res[alignedSize-1] = 0;
-    for (unsigned int s = size; s >= 2; s /= 2) {
-        if (((myId+1) % s)  == 0 && myId >= s/2) {
-            __syncthreads();
-            unsigned int prevId = myId - s / 2;
-            unsigned int prevValue = d_res[prevId];
-            unsigned int myValue = d_res[myId];
-            __syncthreads();
-            d_res[prevId] = myValue;
-            d_res[myId] = myValue + prevValue;
-        }
-    }
-
-}
-
-__global__  void scanReduce(const unsigned int* const d_in,
-                          unsigned int* const d_res,
-                          const size_t size) {
-    unsigned int tid = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
-    if (myId >=size) {
-        return;
-    }
+                          const size_t size, unsigned int myId) {
     d_res[myId] = d_in[myId];
 
     unsigned int prevId;
@@ -165,14 +122,8 @@ __global__  void scanReduce(const unsigned int* const d_in,
 
 }
 
-__global__  void scanDownStep(unsigned int* const d_res,
-                          const size_t size) {
-    unsigned int tid = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
-    if (myId >=size) {
-        return;
-    }
-    __syncthreads();
+__device__  void scanDownStep(unsigned int* const d_res,
+                          const size_t size, unsigned int myId) {
     d_res[size-1] = 0;
 
     unsigned int prevId;
@@ -191,6 +142,19 @@ __global__  void scanDownStep(unsigned int* const d_res,
         }
     }
 
+}
+
+__global__  void blellochScan(const unsigned int* const d_in,
+                          unsigned int* const d_res,
+                          const size_t size) {
+    unsigned int tid = threadIdx.x;
+    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    if (myId >=size) {
+        return;
+    }
+    d_res[myId] = d_in[myId];
+    scanReduce(d_in, d_res, size, myId);
+    scanDownStep(d_res, size, myId);
 }
 
 /**
@@ -348,8 +312,7 @@ void your_sort(unsigned int* const d_inputVals,
           //displayCudaBufferWindow(d_temp, numElems, 2000, 2010);
           displayCudaBufferMax(d_temp, alignedBuferElems);
 
-          scanReduce<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp, d_temp1, alignedBuferElems);
-          scanDownStep<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp1, alignedBuferElems);
+          blellochScan<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp, d_temp1, alignedBuferElems);
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
           unsigned int max = displayCudaBufferMax(d_temp1, numElems);
@@ -380,7 +343,7 @@ void your_sort(unsigned int* const d_inputVals,
     //location for each bin
     //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
     //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, numBins);
-    scan<<<1, numBins>>>(d_binHistogram, d_binScan, numBins);
+    blellochScan<<<1, numBins>>>(d_binHistogram, d_binScan, numBins);
     std::cout << "d_binScan " << std::endl;
     displayCudaBuffer(d_binScan, numBins);
 
