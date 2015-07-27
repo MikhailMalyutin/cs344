@@ -107,8 +107,6 @@ __device__ void scanReduceForBlock(unsigned int* const d_res,
     unsigned int myValue;
 
     for (unsigned int s = 2; s <= size; s *= 2) {
-        if (s > maxThreads) {
-        }
         __syncthreads();
         prevId    = myId - s/2;
         prevValue = (myId >= s/2) ? d_res[prevId] : 0;
@@ -191,7 +189,7 @@ __device__  void scanDownStep(unsigned int* const d_res,
 }
 
 __device__ unsigned int myMin(const unsigned int a, const unsigned int b) {
-    if (a > b) return a;
+    if (a < b) return a;
     return b;
 }
 
@@ -215,13 +213,14 @@ __global__  void blellochScan(const unsigned int* const d_in,
             sdata[compactedMyId] = d_res[myId];
             unsigned int compactedDataSize = size/compactRatio;
             scanReduceForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
+            __syncthreads();
             sdata[compactedDataSize-1] = 0;
-            scanDownStepForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
+//            scanDownStepForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
             d_res[myId] = sdata[compactedMyId];
         }
     }
 
-    scanDownStepForBlock(d_res, myMin(maxThreads, size), myId);
+//    scanDownStepForBlock(d_res, myMin(maxThreads, size), myId);
 }
 
 /**
