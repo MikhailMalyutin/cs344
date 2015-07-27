@@ -212,10 +212,12 @@ __global__  void blellochScan(const unsigned int* const d_in,
             unsigned int compactedMyId = myId/compactRatio;
             sdata[compactedMyId] = d_res[myId];
             unsigned int compactedDataSize = size/compactRatio;
-            scanReduceForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
+            unsigned int initialS = myMin(maxThreads, compactedDataSize);
+            scanReduceForBlock(sdata, initialS, compactedMyId);
             __syncthreads();
             sdata[compactedDataSize-1] = 0;
-            scanDownStepForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
+            __syncthreads();
+            scanDownStepForBlock(sdata, initialS, compactedMyId);
             d_res[myId] = sdata[compactedMyId];
         }
     }
@@ -230,7 +232,8 @@ __global__  void blellochScanDownstep(const unsigned int* const d_in,
     if (myId >=size) {
         return;
     }
-    scanDownStepForBlock(d_res, myMin(maxThreads, size), myId);
+    unsigned int initialS = myMin(maxThreads, size);
+    scanDownStepForBlock(d_res, initialS, myId);
 }
 
 
