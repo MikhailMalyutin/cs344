@@ -42,7 +42,7 @@
    at the end.
 
  */
-const size_t maxThreads = 1024;
+const size_t maxThreads = 8;
 const unsigned int numBits = 1;
 const unsigned int numBins = 1 << numBits;
 
@@ -218,7 +218,7 @@ __global__  void blellochScan(const unsigned int* const d_in,
             sdata[compactedDataSize-1] = 0;
             __syncthreads();
             scanDownStepForBlock(sdata, initialS, compactedMyId);
-            d_res[myId] = sdata[compactedMyId];
+            d_res[compactedMyId * compactRatio + compactRatio - 1] = sdata[compactedMyId];
         }
     }
 }
@@ -356,7 +356,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
 
-  //numElems = 16;//18000;
+  numElems = 16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
@@ -393,7 +393,7 @@ void your_sort(unsigned int* const d_inputVals,
           displayCudaBufferMax(d_temp, alignedBuferElems);
 
           blellochScan<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
-          blellochScanDownstep<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
+          //blellochScanDownstep<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
 
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
