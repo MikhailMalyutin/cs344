@@ -209,7 +209,7 @@ __global__  void blellochScan(const unsigned int* const d_in,
     d_res[size-1] = 0;
 
     unsigned int compactRatio = size / maxThreads;
-    while (compactRatio > 1) {
+    if (compactRatio > 1) {
         if (myId % compactRatio == 0) {
             unsigned int compactedMyId = myId/compactRatio;
             sdata[compactedMyId] = d_res[myId];
@@ -443,3 +443,6 @@ void your_sort(unsigned int* const d_inputVals,
   checkCudaErrors(cudaFree(d_temp));
   checkCudaErrors(cudaFree(d_temp1));
 }
+
+
+
