@@ -120,12 +120,12 @@ __device__ void scanReduceForBlock(unsigned int* const d_res,
 }
 
 __device__  void scanDownStepForBlock(unsigned int* const d_res,
-                          const size_t size, unsigned int myId) {
+                          const unsigned int initialS, unsigned int myId) {
     unsigned int prevId;
     unsigned int prevValue;
     unsigned int myValue;
 
-    for (unsigned int s = size; s >= 2; s /= 2) {
+    for (unsigned int s = initialS; s >= 2; s /= 2) {
         __syncthreads();
         prevId = myId - s / 2;
         prevValue = (myId >= s/2) ? d_res[prevId] : 0;
@@ -215,13 +215,24 @@ __global__  void blellochScan(const unsigned int* const d_in,
             scanReduceForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
             __syncthreads();
             sdata[compactedDataSize-1] = 0;
-//            scanDownStepForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
+            scanDownStepForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
             d_res[myId] = sdata[compactedMyId];
         }
     }
-
-//    scanDownStepForBlock(d_res, myMin(maxThreads, size), myId);
 }
+
+__global__  void blellochScanDownstep(const unsigned int* const d_in,
+                          unsigned int* const d_res,
+                          const size_t size) {
+    extern __shared__ unsigned int sdata[];
+    unsigned int tid = threadIdx.x;
+    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    if (myId >=size) {
+        return;
+    }
+    scanDownStepForBlock(d_res, myMin(maxThreads, size), myId);
+}
+
 
 /**
 d_binScan - для каждого элемента корзины,
@@ -379,6 +390,8 @@ void your_sort(unsigned int* const d_inputVals,
           displayCudaBufferMax(d_temp, alignedBuferElems);
 
           blellochScan<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
+          blellochScanDownstep<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
+
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
           unsigned int max = displayCudaBufferMax(d_temp1, numElems);
