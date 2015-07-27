@@ -100,6 +100,48 @@ __global__ void histogram(const unsigned int* const d_in,
     atomicAdd(&(d_res[binId]), 1);
 }
 
+__device__ void scanReduceForBlock(unsigned int* const d_res,
+                          const size_t size, unsigned int myId) {
+    unsigned int prevId;
+    unsigned int prevValue;
+    unsigned int myValue;
+
+    for (unsigned int s = 2; s <= size; s *= 2) {
+        if (s > maxThreads) {
+        }
+        __syncthreads();
+        prevId    = myId - s/2;
+        prevValue = (myId >= s/2) ? d_res[prevId] : 0;
+        myValue   = d_res[myId];
+        __syncthreads();
+        if (((myId+1) % s) == 0 && (myId >= s/2)) {
+            d_res[myId] = myValue + prevValue;
+        }
+    }
+
+}
+
+__device__  void scanDownStepForBlock(unsigned int* const d_res,
+                          const size_t size, unsigned int myId) {
+    unsigned int prevId;
+    unsigned int prevValue;
+    unsigned int myValue;
+
+    for (unsigned int s = size; s >= 2; s /= 2) {
+        __syncthreads();
+        prevId = myId - s / 2;
+        prevValue = (myId >= s/2) ? d_res[prevId] : 0;
+        myValue = d_res[myId];
+        __syncthreads();
+        if (((myId+1) % s)  == 0 && myId >= s/2) {
+            d_res[prevId] = myValue;
+            d_res[myId] = myValue + prevValue;
+        }
+    }
+
+}
+
+
 __device__ void scanReduce(const unsigned int* const d_in,
                           unsigned int* const d_res,
                           const size_t size, unsigned int myId) {
@@ -109,7 +151,11 @@ __device__ void scanReduce(const unsigned int* const d_in,
     unsigned int prevValue;
     unsigned int myValue;
 
-    for (unsigned int s = 2; s <= size; s *= 2) {
+    scanReduceForBlock(d_res, maxThreads, myId);
+
+    for (unsigned int s = maxThreads * 2; s <= size; s *= 2) {
+        if (s > maxThreads) {
+        }
         __syncthreads();
         prevId    = myId - s/2;
         prevValue = (myId >= s/2) ? d_res[prevId] : 0;
@@ -144,17 +190,38 @@ __device__  void scanDownStep(unsigned int* const d_res,
 
 }
 
+__device__ unsigned int myMin(const unsigned int a, const unsigned int b) {
+    if (a > b) return a;
+    return b;
+}
+
 __global__  void blellochScan(const unsigned int* const d_in,
                           unsigned int* const d_res,
                           const size_t size) {
+    extern __shared__ unsigned int sdata[];
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
     if (myId >=size) {
         return;
     }
     d_res[myId] = d_in[myId];
-    scanReduce(d_in, d_res, size, myId);
-    scanDownStep(d_res, size, myId);
+    scanReduceForBlock(d_res, myMin(maxThreads, size), myId);
+    d_res[size-1] = 0;
+
+    unsigned int compactRatio = size / maxThreads;
+    while (compactRatio > 1) {
+        if (myId % compactRatio == 0) {
+            unsigned int compactedMyId = myId/compactRatio;
+            sdata[compactedMyId] = d_res[myId];
+            unsigned int compactedDataSize = size/compactRatio;
+            scanReduceForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
+            sdata[compactedDataSize-1] = 0;
+            scanDownStepForBlock(sdata, myMin(maxThreads, compactedDataSize), compactedMyId);
+            d_res[myId] = sdata[compactedMyId];
+        }
+    }
+
+    scanDownStepForBlock(d_res, myMin(maxThreads, size), myId);
 }
 
 /**
@@ -312,7 +379,7 @@ void your_sort(unsigned int* const d_inputVals,
           //displayCudaBufferWindow(d_temp, numElems, 2000, 2010);
           displayCudaBufferMax(d_temp, alignedBuferElems);
 
-          blellochScan<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp, d_temp1, alignedBuferElems);
+          blellochScan<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
           unsigned int max = displayCudaBufferMax(d_temp1, numElems);
@@ -343,7 +410,7 @@ void your_sort(unsigned int* const d_inputVals,
     //location for each bin
     //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
     //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, numBins);
-    blellochScan<<<1, numBins>>>(d_binHistogram, d_binScan, numBins);
+    blellochScan<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
     std::cout << "d_binScan " << std::endl;
     displayCudaBuffer(d_binScan, numBins);
 
@@ -376,6 +443,3 @@ void your_sort(unsigned int* const d_inputVals,
   checkCudaErrors(cudaFree(d_temp));
   checkCudaErrors(cudaFree(d_temp1));
 }
-
-
-
