@@ -120,10 +120,16 @@ __device__ void scanReduceForBlock(unsigned int* const d_res,
 }
 
 __device__  void scanDownStepForBlock(unsigned int* const d_res,
-                          const unsigned int initialS, unsigned int myId) {
+                          const unsigned int initialS, unsigned int myId1) {
     unsigned int prevId;
     unsigned int prevValue;
     unsigned int myValue;
+
+    unsigned int tid = threadIdx.x;
+    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    if (myId >=initialS || tid != myId) {
+        return;
+    }
 
     for (unsigned int s = initialS; s >= 2; s /= 2) {
         __syncthreads();
