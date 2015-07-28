@@ -42,7 +42,7 @@
    at the end.
 
  */
-const size_t maxThreads = 4;
+const unsigned int maxThreads = 4;
 const unsigned int numBits = 1;
 const unsigned int numBins = 1 << numBits;
 
@@ -208,15 +208,16 @@ __global__  void blellochScan(const unsigned int* const d_in,
 
     unsigned int compactRatio = size / maxThreads;
     if (compactRatio > 1) {
-        if ((myId + 1) % maxThreads == 0) {
-            unsigned int compactedMyId = myId/maxThreads;
-            sdata[compactedMyId] = d_res[myId];
-            scanReduceForBlock(sdata, maxThreads, compactedMyId);
+        if (myId == tid) {
+            sdata[myId] = d_res[myId * maxThreads + maxThreads - 1];
+            scanReduceForBlock(sdata, maxThreads, myId);
+            __syncthreads();
+            //scanReduceForBlock(sdata, maxThreads/2, compactedMyId);
             __syncthreads();
             sdata[compactRatio-1] = 0;
             __syncthreads();
-            //scanDownStepForBlock(sdata, maxThreads, compactedMyId);
-            d_res[compactedMyId * maxThreads + maxThreads - 1] = sdata[compactedMyId];
+            scanDownStepForBlock(sdata, maxThreads, myId);
+            d_res[myId * maxThreads + maxThreads - 1] = sdata[myId];
         }
     }
 }
