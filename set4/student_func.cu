@@ -145,6 +145,26 @@ __device__  void scanDownStepForBlock(unsigned int* const d_res,
 
 }
 
+__device__  void scanDownStepDevice(unsigned int* const d_res,
+                          const unsigned int initialS, unsigned int myId) {
+    unsigned int prevId;
+    unsigned int prevValue;
+    unsigned int myValue;
+
+    for (unsigned int s = initialS; s >= 2; s /= 2) {
+        __syncthreads();
+        prevId = myId - s / 2;
+        prevValue = (myId >= s/2) ? d_res[prevId] : 0;
+        myValue = d_res[myId];
+        __syncthreads();
+        if (((myId+1) % s)  == 0 && myId >= s/2) {
+            d_res[prevId] = myValue;
+            d_res[myId] = myValue + prevValue;
+        }
+    }
+
+}
+
 
 __device__ void scanReduce(const unsigned int* const d_in,
                           unsigned int* const d_res,
@@ -238,7 +258,7 @@ __global__  void blellochScanDownstep(const unsigned int* const d_in,
         return;
     }
     unsigned int initialS = myMin(maxThreads, size);
-    scanDownStepForBlock(d_res, initialS, myId);
+    scanDownStepDevice(d_res, initialS, myId);
 }
 
 
@@ -398,7 +418,7 @@ void your_sort(unsigned int* const d_inputVals,
           displayCudaBufferMax(d_temp, alignedBuferElems);
 
           blellochScan<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
-          //blellochScanDownstep<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
+          blellochScanDownstep<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
 
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
