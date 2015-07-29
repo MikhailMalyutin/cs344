@@ -42,7 +42,7 @@
    at the end.
 
  */
-const unsigned int maxThreads = 8;
+const unsigned int maxThreads = 1024;
 const unsigned int numBits = 1;
 const unsigned int numBins = 1 << numBits;
 
@@ -383,7 +383,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
 
-  numElems = 32;//16;//18000;
+  //numElems = 32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
