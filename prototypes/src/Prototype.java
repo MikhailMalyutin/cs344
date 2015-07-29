@@ -53,18 +53,17 @@ public class Prototype {
         scanReduceForBlock(d_res, Math.min(maxThreads, size), size);
         d_res[size - 1] = 0;
 
-        int compactRatio = size / maxThreads;
-        int interval = size/ compactRatio;
-        int sdata[] = new int[compactRatio];
-        if (compactRatio > 1) {
-            for (int myId = 0; myId < sdata.length; ++myId) {
+        int ssize = size / maxThreads;
+        if (ssize > 1) {
+            int interval = size/ ssize;
+            int sdata[] = new int[ssize];
+            for (int myId = 0; myId < ssize; ++myId) {
                 sdata[myId] = d_res[myId * interval + interval - 1];
             }
-            scanReduceForBlock(sdata, maxThreads, sdata.length);
-            //scanReduceForBlock(sdata, maxThreads/2, compactedMyId);
-            sdata[sdata.length - 1] = 0;
-            scanDownStepForBlock(sdata, maxThreads, sdata.length);
-            for (int myId = 0; myId < sdata.length; ++myId) {
+            scanReduceForBlock(sdata, maxThreads, ssize);
+            sdata[ssize - 1] = 0;
+            scanDownStepForBlock(sdata, maxThreads, ssize);
+            for (int myId = 0; myId < ssize; ++myId) {
                 d_res[myId * interval + interval - 1] = sdata[myId];
             }
         }
