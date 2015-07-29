@@ -26,25 +26,23 @@ public class Prototype {
         int prevValue;
         int myValue;
 
-        for (int myId = 0; myId < maxSize; ++ myId) {
-
-            for (int s = initialS; s >= 2; s /= 2) {
+        for (int s = initialS; s >= 2; s /= 2) {
+            for (int myId = 0; myId < maxSize; ++myId) {
                 prevId = myId - s / 2;
                 prevValue = (myId >= s / 2) ? d_res[prevId] : 0;
                 myValue = d_res[myId];
+
                 if (((myId + 1) % s) == 0 && myId >= s / 2) {
                     d_res[prevId] = myValue;
                     d_res[myId] = myValue + prevValue;
                 }
             }
         }
-
     }
 
     public static void blellochScan(int d_in[],
                                int d_res[],
                                int size) {
-        int sdata[] = new int[maxThreads];
         for (int myId = 0; myId < size; ++ myId) {
             if (myId >= size) {
                 return;
@@ -56,14 +54,15 @@ public class Prototype {
         d_res[size - 1] = 0;
 
         int compactRatio = size / maxThreads;
+        int sdata[] = new int[maxThreads];
         if (compactRatio > 1) {
-            for (int myId = 0; myId < compactRatio; ++myId) {
-                sdata[myId] = d_res[myId * maxThreads + maxThreads - 1];
+            for (int myId = 0; myId < maxThreads; ++myId) {
+                sdata[myId] = d_res[myId * compactRatio + compactRatio - 1];
             }
-            scanReduceForBlock(sdata, maxThreads, maxThreads);
+            scanReduceForBlock(sdata, maxThreads, sdata.length);
             //scanReduceForBlock(sdata, maxThreads/2, compactedMyId);
-            sdata[compactRatio - 1] = 0;
-            scanDownStepForBlock(sdata, maxThreads, maxThreads);
+            sdata[maxThreads - 1] = 0;
+            scanDownStepForBlock(sdata, maxThreads, sdata.length);
             for (int myId = 0; myId < compactRatio; ++myId) {
                 d_res[myId * maxThreads + maxThreads - 1] = sdata[myId];
             }
