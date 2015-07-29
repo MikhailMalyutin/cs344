@@ -1,5 +1,5 @@
 public class Prototype {
-    private static int maxThreads = 8;
+    private static int maxThreads = 4;
 
     private static void scanReduceForBlock(int d_res[],
                                            int initialS, int size) {
