@@ -86,23 +86,23 @@ public class Prototype {
                 0,
                 1,
                 1,
-                1/**,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                0,
                 1,
                 0,
                 0,
                 1,
                 0,
                 0,
+                0,
+                0,
+                0,
                 1,
-                1**/
+                0,
+                0,
+                1,
+                0,
+                0,
+                1,
+                1
         };
         int outData[] = new int[inData.length];
         blellochScan(inData, outData, inData.length);
