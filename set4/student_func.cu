@@ -42,7 +42,7 @@
    at the end.
 
  */
-const unsigned int maxThreads = 4;
+const unsigned int maxThreads = 8;
 const unsigned int numBits = 1;
 const unsigned int numBins = 1 << numBits;
 
@@ -231,19 +231,21 @@ __global__  void blellochScan(const unsigned int* const d_in,
     d_res[myId] = d_in[myId];
     scanReduceForBlock(d_res, myMin(maxThreads, size), myId);
     d_res[size-1] = 0;
+    __syncthreads();
 
-    unsigned int compactRatio = size / maxThreads;
-    if (compactRatio > 1) {
-        if (myId == tid) {
-            sdata[myId] = d_res[myId * maxThreads + maxThreads - 1];
-            scanReduceForBlock(sdata, maxThreads, myId);
+    unsigned int ssize = size / maxThreads; //сколько элементов будет в прореженном массиве
+    if (ssize > 1) {
+        unsigned int interval = size/ ssize;
+        if (myId == tid && myId < ssize) { //исполняем только внутри одного блока
+            sdata[myId] = d_res[myId * interval + interval - 1];
+            scanReduceForBlock(sdata, ssize, myId);
             __syncthreads();
             //scanReduceForBlock(sdata, maxThreads/2, compactedMyId);
             __syncthreads();
-            sdata[compactRatio-1] = 0;
+            sdata[ssize-1] = 0;
             __syncthreads();
-            scanDownStepForBlock(sdata, maxThreads, myId);
-            d_res[myId * maxThreads + maxThreads - 1] = sdata[myId];
+            scanDownStepForBlock(sdata, ssize, myId);
+            d_res[myId * interval + interval - 1] = sdata[myId];
         }
     }
 }
@@ -381,7 +383,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
 
-  numElems = 16;//18000;
+  numElems = 32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
