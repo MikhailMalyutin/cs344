@@ -134,9 +134,12 @@ public class Prototype {
                 int mask,
                 int i,
                 int numElems) {
+
+        int[] pos = new int[d_vals_dst.length];
+        copy(d_vals_dst, pos, numElems);
+
         for (int myId = 0 ;myId < numElems; ++myId) {
-            int myIdOffset = d_vals_dst[myId];
-            d_vals_dst[myId] = d_vals_src[myId];
+            int myIdOffset = pos[myId];
 
             int binId = (d_vals_src[myId] & mask) >> i;
             int offset = d_binScan[binId];
@@ -144,6 +147,7 @@ public class Prototype {
             d_vals_dst[newIndex] = d_vals_src[myId];
             d_pos_dst[newIndex] = d_pos_src[myId];
         }
+        System.out.print(d_vals_dst);
     }
 
     static void your_sort(int d_inputVals[],
@@ -203,12 +207,19 @@ public class Prototype {
     }
 
         //we did an even number of iterations, need to copy from input buffer into output
-//        copy<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_ov, numElems);
-//        copy<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_ip, d_op, numElems);
+        copy(d_iv, d_ov, numElems);
+        copy(d_ip, d_op, numElems);
+    }
+
+    private static void copy(int[] d_ip, int[] d_op, int numElems) {
+        System.arraycopy(d_ip, 0, d_op, 0, numElems);
     }
 
     private static void swap(int[] d_ov, int[] d_iv) {
-        //todo
+        int[] temp = new int[d_ov.length];
+        copy(d_ov, temp, d_ov.length);//temp=d_ov
+        copy(d_iv, d_ov, d_ov.length);//d_ov=d_iv
+        copy(temp, d_iv, d_ov.length);//d_iv=temp
     }
 
     private static void blellochScanDownstep(int[] d_temp, int[] d_temp1, int alignedBuferElems) {
@@ -273,6 +284,7 @@ public class Prototype {
                 1};
         int resData[] = new int[sortData.length];
         int resVal[] = new int[sortData.length];
+        clear(sortData, sortData.length);
         your_sort(sortData, sortVal, resData, resVal, sortData.length);
     }
 }
