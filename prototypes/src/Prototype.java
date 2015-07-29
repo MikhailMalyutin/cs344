@@ -1,5 +1,5 @@
 public class Prototype {
-    private static int maxThreads = 4;
+    private static int maxThreads = 8;
 
     private static void scanReduceForBlock(int d_res[],
                                            int initialS, int size) {
@@ -54,17 +54,18 @@ public class Prototype {
         d_res[size - 1] = 0;
 
         int compactRatio = size / maxThreads;
-        int sdata[] = new int[maxThreads];
+        int interval = size/ compactRatio;
+        int sdata[] = new int[compactRatio];
         if (compactRatio > 1) {
-            for (int myId = 0; myId < maxThreads; ++myId) {
-                sdata[myId] = d_res[myId * compactRatio + compactRatio - 1];
+            for (int myId = 0; myId < sdata.length; ++myId) {
+                sdata[myId] = d_res[myId * interval + interval - 1];
             }
             scanReduceForBlock(sdata, maxThreads, sdata.length);
             //scanReduceForBlock(sdata, maxThreads/2, compactedMyId);
-            sdata[maxThreads - 1] = 0;
+            sdata[sdata.length - 1] = 0;
             scanDownStepForBlock(sdata, maxThreads, sdata.length);
-            for (int myId = 0; myId < compactRatio; ++myId) {
-                d_res[myId * maxThreads + maxThreads - 1] = sdata[myId];
+            for (int myId = 0; myId < sdata.length; ++myId) {
+                d_res[myId * interval + interval - 1] = sdata[myId];
             }
         }
     }
