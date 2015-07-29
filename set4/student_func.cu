@@ -267,6 +267,8 @@ __global__  void blellochScanDownstep(const unsigned int* const d_in,
 /**
 d_binScan - для каждого элемента корзины,
 содержит смещение, куда нужно положить результат, в случае если он попал в эту корзину
+d_vals_dst - содержит смещение для данного id для конкретногй корзины
+d_vals_dst также будет содержать результат
 **/
 __global__ void gather(const unsigned int* const d_vals_src,
                        const unsigned int* const d_pos_src,
@@ -283,6 +285,7 @@ __global__ void gather(const unsigned int* const d_vals_src,
         return;
     }
     unsigned int myIdOffset = d_vals_dst[myId];
+    __syncthreads();
     d_vals_dst[myId] = d_vals_src[myId];
 
     unsigned int binId = (d_vals_src[myId] & mask) >> i;
@@ -453,6 +456,7 @@ void your_sort(unsigned int* const d_inputVals,
     //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
     //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, numBins);
     blellochScan<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
+    blellochScanDownstep<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binScan, d_binScan, numBins);
     std::cout << "d_binScan " << std::endl;
     displayCudaBuffer(d_binScan, numBins);
 
