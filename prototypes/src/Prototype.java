@@ -198,6 +198,7 @@ public class Prototype {
         histogram(d_iv, d_binHistogram, mask, i, numElems, numBins);
 
         blellochScan(d_binHistogram, d_binScan, numBins);
+        blellochScanDownstep(d_binScan, d_binScan, numBins);
 
         gather(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
 
@@ -233,6 +234,11 @@ public class Prototype {
     }
 
     public static void main(String[] args) {
+        int smallData[] = {1,2};
+        int smallResult[] = {0, 0};
+        blellochScan(smallData, smallResult, smallResult.length);
+        scanDownStepForBlock(smallResult, maxThreads, smallResult.length);
+
         int inData[] = {1,
                 1,
                 1,
@@ -284,7 +290,7 @@ public class Prototype {
                 1};
         int resData[] = new int[sortData.length];
         int resVal[] = new int[sortData.length];
-        clear(sortData, sortData.length);
+       // clear(sortData, sortData.length);
         your_sort(sortData, sortVal, resData, resVal, sortData.length);
     }
 }
