@@ -406,7 +406,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
 
-  //numElems = 32;//16;//18000;
+  numElems = 32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
@@ -486,6 +486,7 @@ void your_sort(unsigned int* const d_inputVals,
       unsigned int* d_new_index = d_op;
       displayCudaBufferMax(d_disp_src, numElems);
       getNewIndexes<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
+      std::cout << "after getNewIndexes " << std::endl;
       displayCudaBuffer(d_new_index, elemstoDisplay);
       gather<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
       //gather<<<1, numElems>>>(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
