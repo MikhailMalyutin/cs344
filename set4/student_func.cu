@@ -272,9 +272,32 @@ d_vals_dst также будет содержать результат
 **/
 __global__ void gather(const unsigned int* const d_vals_src,
                        const unsigned int* const d_pos_src,
+                       const unsigned int* const d_new_index_src,
                        unsigned int* const d_vals_dst,
                        unsigned int* const d_pos_dst,
-                       unsigned int* const d_binScan,
+                       const unsigned int numElems) {
+    unsigned int tid = threadIdx.x;
+    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+
+    if (myId >= numElems) {
+        return;
+    }
+    __syncthreads();
+    unsigned int newIndex = d_new_index_src[myId];
+    __syncthreads();
+    d_vals_dst[newIndex] = d_vals_src[myId];
+    d_pos_dst[newIndex]  = d_pos_src[myId];
+}
+
+/**
+d_binScan - для каждого элемента корзины,
+содержит смещение, куда нужно положить результат, в случае если он попал в эту корзину
+d_disp_src - содержит смещение для данного id для конкретногй корзины
+**/
+__global__ void getNewIndexes(const unsigned int* const d_vals_src,
+                       const unsigned int* const d_disp_src,
+                       const unsigned int* const d_binScan,
+                       unsigned int* const d_new_index_dst,
                        const unsigned int mask,
                        const unsigned int i,
                        const unsigned int numElems) {
@@ -284,16 +307,13 @@ __global__ void gather(const unsigned int* const d_vals_src,
     if (myId >= numElems) {
         return;
     }
-    unsigned int myIdOffset = d_vals_dst[myId];
-    __syncthreads();
-    d_vals_dst[myId] = d_vals_src[myId];
-
+    unsigned int myIdOffset = d_disp_src[myId]; //у нас свой ид, для нашего ид определяем смещение,
+    //кладем в локальную переменную
     unsigned int binId = (d_vals_src[myId] & mask) >> i;
     __syncthreads();
     unsigned int offset = d_binScan[binId];
     unsigned int newIndex = offset + myIdOffset;
-    d_vals_dst[newIndex] = d_vals_src[myId];
-    d_pos_dst[newIndex]  = d_pos_src[myId];
+    d_new_index_dst[myId] = newIndex;
 }
 
 __global__ void mapToBin(const unsigned int* const d_vals_src,
@@ -446,31 +466,35 @@ void your_sort(unsigned int* const d_inputVals,
           displayCudaBuffer(d_ov, elemstoDisplay);
       }
 
-    histogram<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_binHistogram, mask, i, numElems, numBins);
-    //histogram<<<1, numElems>>>(d_iv, d_binHistogram, mask, i, numElems, numBins);
-    std::cout << "d_binHistogram " << std::endl;
-    displayCudaBuffer(d_binHistogram, numBins);
+      histogram<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_binHistogram, mask, i, numElems, numBins);
+      //histogram<<<1, numElems>>>(d_iv, d_binHistogram, mask, i, numElems, numBins);
+      std::cout << "d_binHistogram " << std::endl;
+      displayCudaBuffer(d_binHistogram, numBins);
 
-    //perform exclusive prefix sum (scan) on binHistogram to get starting
-    //location for each bin
-    //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
-    //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, numBins);
-    blellochScan<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
-    blellochScanDownstep<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binScan, d_binScan, numBins);
-    std::cout << "d_binScan " << std::endl;
-    displayCudaBuffer(d_binScan, numBins);
+      //perform exclusive prefix sum (scan) on binHistogram to get starting
+      //location for each bin
+      //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
+      //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, numBins);
+      blellochScan<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
+      blellochScanDownstep<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binScan, d_binScan, numBins);
+      std::cout << "d_binScan " << std::endl;
+      displayCudaBuffer(d_binScan, numBins);
 
-    //Gather everything into the correct location
-    //need to move vals and positions
-    displayCudaBufferMax(d_ov, numElems);
-    gather<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
-    //gather<<<1, numElems>>>(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
-    std::cout << "after gather " << std::endl;
-    displayCudaBuffer(d_ov, elemstoDisplay);
+      //Gather everything into the correct location
+      //need to move vals and positions
+      unsigned int* d_disp_src = d_ov;
+      unsigned int* d_new_index = d_op;
+      displayCudaBufferMax(d_disp_src, numElems);
+      getNewIndexes<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
+      displayCudaBuffer(d_new_index, elemstoDisplay);
+      gather<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
+      //gather<<<1, numElems>>>(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
+      std::cout << "after gather " << std::endl;
+      displayCudaBuffer(d_ov, elemstoDisplay);
 
-    //swap the buffers (pointers only)
-    std::swap(d_ov, d_iv);
-    std::swap(d_op, d_ip);
+      //swap the buffers (pointers only)
+      std::swap(d_ov, d_iv);
+      std::swap(d_op, d_ip);
   }
 
   //we did an even number of iterations, need to copy from input buffer into output
@@ -480,9 +504,9 @@ void your_sort(unsigned int* const d_inputVals,
   //copy<<<1, numElems>>>(d_ip, d_op, numElems);
 
   std::cout << "d_outputVals " << std::endl;
-  displayCudaBuffer(d_outputVals, 10);
+  displayCudaBuffer(d_outputVals, elemstoDisplay);
   std::cout << "d_inputVals " << std::endl;
-  displayCudaBuffer(d_inputVals, 10);
+  displayCudaBuffer(d_inputVals, elemstoDisplay);
 
   checkCudaErrors(cudaFree(d_binScan));
   checkCudaErrors(cudaFree(d_binHistogram));
