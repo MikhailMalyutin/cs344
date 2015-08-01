@@ -77,7 +77,12 @@ unsigned int displayCudaBufferMax(unsigned int* const d_buf, const size_t numEle
   int begin = idx - 10;
   if (begin < 0) begin = 0;
 
-  displayCudaBufferWindow(d_buf, numElems, begin, idx+1);
+  int lastIndex = idx + 10;
+  if (lastIndex > numElems) {
+      lastIndex = idx + 1;
+  }
+
+  displayCudaBufferWindow(d_buf, numElems, begin, lastIndex);
 
   delete[] buf;
   return max;
@@ -406,7 +411,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
 
-  numElems = 32;//16;//18000;
+  numElems = 15000;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
@@ -506,8 +511,10 @@ void your_sort(unsigned int* const d_inputVals,
 
   std::cout << "d_outputVals " << std::endl;
   displayCudaBuffer(d_outputVals, elemstoDisplay);
+  displayCudaBufferMax(d_outputVals, numElems);
   std::cout << "d_inputVals " << std::endl;
   displayCudaBuffer(d_inputVals, elemstoDisplay);
+  displayCudaBufferMax(d_inputVals, numElems);
 
   checkCudaErrors(cudaFree(d_binScan));
   checkCudaErrors(cudaFree(d_binHistogram));
