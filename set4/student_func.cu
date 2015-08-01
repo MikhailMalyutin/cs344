@@ -83,6 +83,10 @@ unsigned int displayCudaBufferMax(unsigned int* const d_buf, const size_t numEle
   }
 
   displayCudaBufferWindow(d_buf, numElems, begin, lastIndex);
+  if (numElems > 10) {
+      std::cout << "last " << std::endl;
+      displayCudaBufferWindow(d_buf, numElems, numElems - 10, numElems);
+  }
 
   delete[] buf;
   return max;
