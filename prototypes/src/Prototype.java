@@ -7,16 +7,18 @@ public class Prototype {
                                            int initialS, int size) {
         int prevId;
         int prevValue;
-        int myValue;
+        int nextId;
+        int nextValue;
 
-        for (int s = 2; s <= initialS; s *= 2) {
+        for (int s = 1; s <= initialS/2; s *= 2) {
             for (int myId = 0; myId < size; ++ myId) {
-                prevId = myId - (s - 1);
-                prevValue = (myId >= s - 1) ? d_res[prevId] : 0;
-                myValue = d_res[myId];
+                prevId = myId;
+                prevValue = d_res[prevId];
+                nextId = myId + s;
+                nextValue = nextId < size ? d_res[nextId] : 0;
 
-                if (((myId + 1) % s) == 0 && (myId >= s - 1)) {
-                    d_res[myId] = myValue + prevValue;
+                if (((nextId + 1) % (s*2)) == 0 && (nextId < size)) {
+                    d_res[nextId] = prevValue + nextValue;
                 }
             }
             System.out.print(d_res);
@@ -59,21 +61,11 @@ public class Prototype {
         if (ssize > 1) {
             int interval = size/ ssize;
             int sdata[] = new int[ssize];
-            for (int myId = 0; myId < ssize; myId +=2) {
-                sdata[myId] = d_res[myId * interval];
-                sdata[myId+1] = d_res[myId * interval + interval - 1];
-            }
-            scanReduceForBlock(sdata, maxThreads, ssize);
-            sdata[ssize - 1] = 0;
-            for (int myId = 0; myId < ssize; myId +=2) {
-                d_res[myId * interval + interval - 1] = sdata[myId];
-            }
-            for (int myId = 1; myId < ssize; myId +=2) {
-                d_res[myId * interval] = sdata[myId];
-            }
             for (int myId = 0; myId < ssize; ++myId) {
                 sdata[myId] = d_res[myId * interval + interval - 1];
             }
+            scanReduceForBlock(sdata, maxThreads, ssize);
+            sdata[ssize - 1] = 0;
             scanDownStepForBlock(sdata, maxThreads, ssize);
             for (int myId = 0; myId < ssize; ++myId) {
                 d_res[myId * interval + interval - 1] = sdata[myId];
