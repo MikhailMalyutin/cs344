@@ -111,18 +111,18 @@ __global__ void histogram(const unsigned int* const d_in,
 
 __device__ void scanReduceForBlock(unsigned int* const d_res,
                           const size_t size, unsigned int myId) {
-    unsigned int prevId;
+    unsigned int nextId;
     unsigned int prevValue;
-    unsigned int myValue;
+    unsigned int nextValue;
 
-    for (unsigned int s = 2; s <= size; s *= 2) {
+    for (unsigned int s = 1; s <= size/2; s *= 2) {
         __syncthreads();
-        prevId    = myId - s/2;
-        prevValue = (myId >= s/2) ? d_res[prevId] : 0;
-        myValue   = d_res[myId];
+        prevValue = d_res[myId];
+        nextId = myId + s;
+        nextValue = nextId < size ? d_res[nextId] : 0;
         __syncthreads();
-        if (((myId+1) % s) == 0 && (myId >= s/2)) {
-            d_res[myId] = myValue + prevValue;
+        if (((nextId + 1) % (s*2)) == 0 && (nextId < size)) {
+            d_res[nextId] = prevValue + nextValue;
         }
     }
 
