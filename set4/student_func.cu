@@ -83,9 +83,9 @@ unsigned int displayCudaBufferMax(unsigned int* const d_buf, const size_t numEle
   }
 
   displayCudaBufferWindow(d_buf, numElems, begin, lastIndex);
-  if (numElems > 10) {
+  if (numElems > 50) {
       std::cout << "last " << std::endl;
-      displayCudaBufferWindow(d_buf, numElems, numElems - 10, numElems);
+      displayCudaBufferWindow(d_buf, numElems, numElems - 50, numElems);
   }
 
   delete[] buf;
@@ -456,7 +456,7 @@ void your_sort(unsigned int* const d_inputVals,
 
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
-          unsigned int max = displayCudaBufferMax(d_temp1, numElems);
+          unsigned int max = displayCudaBufferMax(d_temp1, alignedBuferElems);
           if (max > numElems) {
               std::cout << "ERROR " << std::endl;
               displayCudaBufferWindow(d_temp, numElems,  6391, 6403);
