@@ -11,11 +11,11 @@ public class Prototype {
 
         for (int s = 2; s <= initialS; s *= 2) {
             for (int myId = 0; myId < size; ++ myId) {
-                prevId = myId - s / 2;
-                prevValue = (myId >= s / 2) ? d_res[prevId] : 0;
+                prevId = myId - (s - 1);
+                prevValue = (myId >= s - 1) ? d_res[prevId] : 0;
                 myValue = d_res[myId];
 
-                if (((myId + 1) % s) == 0 && (myId >= s / 2)) {
+                if (((myId + 1) % s) == 0 && (myId >= s - 1)) {
                     d_res[myId] = myValue + prevValue;
                 }
             }
@@ -59,11 +59,21 @@ public class Prototype {
         if (ssize > 1) {
             int interval = size/ ssize;
             int sdata[] = new int[ssize];
-            for (int myId = 0; myId < ssize; ++myId) {
-                sdata[myId] = d_res[myId * interval + interval - 1];
+            for (int myId = 0; myId < ssize; myId +=2) {
+                sdata[myId] = d_res[myId * interval];
+                sdata[myId+1] = d_res[myId * interval + interval - 1];
             }
             scanReduceForBlock(sdata, maxThreads, ssize);
             sdata[ssize - 1] = 0;
+            for (int myId = 0; myId < ssize; myId +=2) {
+                d_res[myId * interval + interval - 1] = sdata[myId];
+            }
+            for (int myId = 1; myId < ssize; myId +=2) {
+                d_res[myId * interval] = sdata[myId];
+            }
+            for (int myId = 0; myId < ssize; ++myId) {
+                sdata[myId] = d_res[myId * interval + interval - 1];
+            }
             scanDownStepForBlock(sdata, maxThreads, ssize);
             for (int myId = 0; myId < ssize; ++myId) {
                 d_res[myId * interval + interval - 1] = sdata[myId];
@@ -165,9 +175,6 @@ public class Prototype {
         int[] d_ov = d_outputVals;
         int[] d_op = d_outputPos;
 
-        //numElems = 32;//16;//18000;
-        int elemstoDisplay = 16;
-
         int alignedBuferElems = getNearest(numElems);
 
         d_binScan = new int[numBins];
@@ -236,8 +243,8 @@ public class Prototype {
     public static void main(String[] args) {
         int smallData[] = {1,2};
         int smallResult[] = {0, 0};
-        blellochScan(smallData, smallResult, smallResult.length);
-        scanDownStepForBlock(smallResult, maxThreads, smallResult.length);
+        //blellochScan(smallData, smallResult, smallResult.length);
+        //scanDownStepForBlock(smallResult, maxThreads, smallResult.length);
 
         int inData[] = {1,
                 1,
@@ -256,7 +263,7 @@ public class Prototype {
                 1,
                 1,
                 0,
-                0,
+               /** 0,
                 1,
                 0,
                 0,
@@ -270,27 +277,25 @@ public class Prototype {
                 0,
                 0,
                 1,
-                1
+                1**/
         };
         int outData[] = new int[inData.length];
-        blellochScan(inData, outData, inData.length);
-        scanDownStepForBlock(outData, maxThreads, inData.length);
+        //blellochScan(inData, outData, inData.length);
+        //scanDownStepForBlock(outData, maxThreads, inData.length);
         System.out.println(outData);
-        int sortData[] = {6,
-                5,
-                4,
-                3,
-                2,
-                1};
-        int sortVal[] = {6,
-                5,
-                4,
-                3,
-                2,
-                1};
+        int sortData[] = getUnsortedSeq(17);
+        int sortVal[] = getUnsortedSeq(17);
         int resData[] = new int[sortData.length];
         int resVal[] = new int[sortData.length];
        // clear(sortData, sortData.length);
         your_sort(sortData, sortVal, resData, resVal, sortData.length);
+    }
+
+    private static int[] getUnsortedSeq(int numElems) {
+        int[] result = new int[numElems];
+        for (int i = 0; i< numElems; ++i) {
+            result[i] = numElems - i;
+        }
+        return result;
     }
 }
