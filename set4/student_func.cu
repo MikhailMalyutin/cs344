@@ -218,13 +218,13 @@ __global__  void blellochScan(const unsigned int* const d_in,
         unsigned int interval = size/ ssize;
         if (myId == tid && myId < ssize) { //исполняем только внутри одного блока
             sdata[myId] = d_res[myId * interval + interval - 1];
-            scanReduceForBlock(sdata, MAX_THREADS, ssize, myId);
+            scanReduceForBlock(sdata, ssize, ssize, myId);
 
             __syncthreads();
             sdata[ssize-1] = 0;
 
             __syncthreads();
-            scanDownStepForBlock(sdata, MAX_THREADS, ssize);
+            scanDownStepForBlock(sdata, ssize, ssize);
 
             __syncthreads();
             d_res[myId * interval + interval - 1] = sdata[myId];
