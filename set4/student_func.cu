@@ -67,7 +67,6 @@ void displayCudaBuffer(const unsigned int* const d_buf,
   displayCudaBufferWindow(d_buf, numElems, 0, numElems);
 }
 
-
 unsigned int displayCudaBufferMax(const unsigned int* const d_buf,
                                   const size_t              numElems) {
   unsigned int *buf = new unsigned int[numElems];
@@ -124,7 +123,7 @@ __global__ void histogram(const unsigned int* const d_in,
                           const unsigned int        mask,
                           const unsigned int        i,
                           const size_t              numElems) {
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + blockDim.x * blockIdx.x;
     if (myId < NUM_BINS) { //очистка буфера результата
        d_res[myId] = 0;
@@ -141,7 +140,7 @@ __global__ void histogram(const unsigned int* const d_in,
 __device__ void scanReduceForBlock(      unsigned int* const d_res,
                                    const size_t              maxDisplacement,
                                    const unsigned int        size,
-                                   unsigned int              myId) {
+                                   const unsigned int        myId) {
     unsigned int nextId;
     unsigned int prevValue;
     unsigned int nextValue;
@@ -158,7 +157,6 @@ __device__ void scanReduceForBlock(      unsigned int* const d_res,
             d_res[nextId] = prevValue + nextValue;
         }
     }
-
 }
 
 __device__  void scanDownStepDevice(      unsigned int* const d_res,
