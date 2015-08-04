@@ -397,6 +397,9 @@ void your_sort(unsigned int* const d_inputVals,
   std::cout << "d_inputVals " << std::endl;
   displayCudaBuffer(d_inputVals, elemstoDisplay);
 
+  const unsigned int numBlocksForAligned  = (alignedBuferElems + MAX_THREADS - 1) / MAX_THREADS;
+  const unsigned int numBlocksForElements = (numElems          + MAX_THREADS - 1) / MAX_THREADS;
+
   //a simple radix sort - only guaranteed to work for NUM_BITS that are multiples of 2
   for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += NUM_BITS) {
       unsigned int mask = (NUM_BINS - 1) << i;
@@ -405,20 +408,22 @@ void your_sort(unsigned int* const d_inputVals,
 
       for (unsigned int j = 0; j < NUM_BINS; ++j) {
           //checkCudaErrors(cudaMemset(d_temp, 0,  sizeof(unsigned int) * alignedBuferElems));
-          clear<<<(alignedBuferElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_temp,alignedBuferElems);
-          clear<<<(alignedBuferElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_temp1,alignedBuferElems);
+          clear <<<numBlocksForAligned, MAX_THREADS>>> (d_temp,  alignedBuferElems);
+          clear <<<numBlocksForAligned, MAX_THREADS>>> (d_temp1, alignedBuferElems);
           //std::cout << "after clear" << std::endl;
           //displayCudaBufferMax(d_temp, alignedBuferElems);
 
-          mapToBin<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv,d_temp,mask,i,j,numElems);
+          mapToBin <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_temp, mask, i, j, numElems);
           //std::cout << "mapToBin" << j << " " <<  mask << " " << i << std::endl;
           //displayCudaBuffer(d_temp, elemstoDisplay);
           //std::cout << "DEEP " << std::endl;
           //displayCudaBufferWindow(d_temp, numElems, 2000, 2010);
           //displayCudaBufferMax(d_temp, alignedBuferElems);
 
-          blellochScan<<<(alignedBuferElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
-          blellochScanDownstep<<<(alignedBuferElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
+          blellochScan         <<<numBlocksForAligned, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>
+                       (d_temp, d_temp1, alignedBuferElems);
+          blellochScanDownstep <<<numBlocksForAligned, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>
+                       (d_temp, d_temp1, alignedBuferElems);
 
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
@@ -430,18 +435,20 @@ void your_sort(unsigned int* const d_inputVals,
 
           }
 
-          resetMapToBin<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv,d_temp1,mask,i,j,numElems);
+          resetMapToBin <<<numBlocksForElements, MAX_THREADS>>>
+                        (d_iv, d_temp1, mask, i, j, numElems);
           std::cout << "resetMapToBin " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
           displayCudaBufferMax(d_temp1, numElems);
 
-          sum<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_temp1,d_ov,numElems);
+          sum <<<numBlocksForElements, MAX_THREADS>>>
+              (d_temp1,d_ov,numElems);
           std::cout << "sum " << std::endl;
           displayCudaBufferMax(d_ov, numElems);
           displayCudaBuffer(d_ov, elemstoDisplay);
       }
 
-      histogram<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv, d_binHistogram, mask, i, numElems);
+      histogram <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_binHistogram, mask, i, numElems);
       //histogram<<<1, numElems>>>(d_iv, d_binHistogram, mask, i, numElems, NUM_BINS);
       std::cout << "d_binHistogram " << std::endl;
       displayCudaBuffer(d_binHistogram, NUM_BINS);
@@ -450,8 +457,10 @@ void your_sort(unsigned int* const d_inputVals,
       //location for each bin
       //scan<<<1, NUM_BINS, NUM_BINS*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, NUM_BINS);
       //scan<<<1, NUM_BINS, NUM_BINS*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, NUM_BINS);
-      blellochScan<<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>(d_binHistogram, d_binScan, NUM_BINS);
-      blellochScanDownstep<<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>(d_binScan, d_binScan, NUM_BINS);
+      blellochScan         <<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>
+                           (d_binHistogram, d_binScan, NUM_BINS);
+      blellochScanDownstep <<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>
+                           (d_binScan,      d_binScan, NUM_BINS);
       std::cout << "d_binScan " << std::endl;
       displayCudaBuffer(d_binScan, NUM_BINS);
 
@@ -460,10 +469,10 @@ void your_sort(unsigned int* const d_inputVals,
       unsigned int* d_disp_src = d_ov;
       unsigned int* d_new_index = d_op;
       displayCudaBufferMax(d_disp_src, numElems);
-      getNewIndexes<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
+      getNewIndexes <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
       std::cout << "after getNewIndexes " << std::endl;
       displayCudaBuffer(d_new_index, elemstoDisplay);
-      gather<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
+      gather <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
       //gather<<<1, numElems>>>(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
       std::cout << "after gather " << std::endl;
       displayCudaBuffer(d_ov, elemstoDisplay);
@@ -474,8 +483,8 @@ void your_sort(unsigned int* const d_inputVals,
   }
 
   //we did an even number of iterations, need to copy from input buffer into output
-  copy<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv, d_ov, numElems);
-  copy<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_ip, d_op, numElems);
+  copy <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_ov, numElems);
+  copy <<<numBlocksForElements, MAX_THREADS>>> (d_ip, d_op, numElems);
   //copy<<<1, numElems>>>(d_iv, d_ov, numElems);
   //copy<<<1, numElems>>>(d_ip, d_op, numElems);
 
