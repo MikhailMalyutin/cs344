@@ -142,32 +142,6 @@ __device__ void scanReduceForBlock(      unsigned int* const d_res,
 
 }
 
-__device__  void scanDownStepForBlock(      unsigned int* const d_res,
-                                      const unsigned int        initialS) {
-    unsigned int prevId;
-    unsigned int prevValue;
-    unsigned int myValue;
-
-    unsigned int tid = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
-    if (myId >=initialS || tid != myId) {
-        return;
-    }
-
-    for (unsigned int s = initialS; s >= 2; s /= 2) {
-        __syncthreads();
-        prevId = myId - s / 2;
-        prevValue = (myId >= s/2) ? d_res[prevId] : 0;
-        myValue = d_res[myId];
-        __syncthreads();
-        if (((myId+1) % s)  == 0 && myId >= s/2) {
-            d_res[prevId] = myValue;
-            d_res[myId] = myValue + prevValue;
-        }
-    }
-
-}
-
 __device__  void scanDownStepDevice(      unsigned int* const d_res,
                                     const unsigned int        initialS,
                                     const unsigned int        myId) {
@@ -181,12 +155,27 @@ __device__  void scanDownStepDevice(      unsigned int* const d_res,
         prevValue = (myId >= s/2) ? d_res[prevId] : 0;
         myValue = d_res[myId];
         __syncthreads();
-        if (((myId+1) % s)  == 0 && myId >= s/2) {
+        if (((myId + 1) % s) == 0 && myId >= s/2) {
             d_res[prevId] = myValue;
             d_res[myId] = myValue + prevValue;
         }
     }
 
+}
+
+__device__  void scanDownStepForBlock(      unsigned int* const d_res,
+                                      const unsigned int        size) {
+    unsigned int prevId;
+    unsigned int prevValue;
+    unsigned int myValue;
+
+    unsigned int tid = threadIdx.x;
+    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    if (myId >= size || tid != myId) {
+        return;
+    }
+
+    scanDownStepDevice(d_res, size, myId);
 }
 
 __device__ unsigned int myMin(const unsigned int a,
