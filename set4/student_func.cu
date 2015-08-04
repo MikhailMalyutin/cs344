@@ -170,11 +170,11 @@ __device__  void scanDownStepDevice(      unsigned int* const d_res,
 
         __syncthreads();
         prevId    = myId - s / 2;
-        prevValue = (myId >= s/2) ? d_res[prevId] : 0;
+        prevValue = (prevId >= 0) ? d_res[prevId] : 0;
         myValue   =                 d_res[myId];
 
         __syncthreads();
-        if (((myId + 1) % s) == 0 && myId >= s/2) {
+        if (((myId + 1) % s) == 0 && prevId >= 0) {
             d_res[prevId] = myValue;
             d_res[myId]   = myValue + prevValue;
         }
