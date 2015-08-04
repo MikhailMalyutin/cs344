@@ -42,7 +42,7 @@
    at the end.
 
  */
-const unsigned int maxThreads = 8;
+const unsigned int maxThreads = 1024;
 const unsigned int numBits = 1;
 const unsigned int numBins = 1 << numBits;
 
@@ -68,7 +68,7 @@ unsigned int displayCudaBufferMax(unsigned int* const d_buf, const size_t numEle
   unsigned int max = buf[0];
   unsigned int idx = 0;
   for (int i=0 ; i< numElems; ++i) {
-      if (max < buf[i]) {
+      if (max <= buf[i]) {
           max = buf[i];
           idx = i;
       }
@@ -417,7 +417,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
 
-  numElems = 17;//15000;//32;//16;//18000;
+  numElems = 15000;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
