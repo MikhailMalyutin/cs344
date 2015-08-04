@@ -469,10 +469,12 @@ void your_sort(unsigned int* const d_inputVals,
       unsigned int* d_disp_src = d_ov;
       unsigned int* d_new_index = d_op;
       displayCudaBufferMax(d_disp_src, numElems);
-      getNewIndexes <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
+      getNewIndexes <<<numBlocksForElements, MAX_THREADS>>>
+                    (d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
       std::cout << "after getNewIndexes " << std::endl;
       displayCudaBuffer(d_new_index, elemstoDisplay);
-      gather <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
+      gather <<<numBlocksForElements, MAX_THREADS>>>
+             (d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
       //gather<<<1, numElems>>>(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
       std::cout << "after gather " << std::endl;
       displayCudaBuffer(d_ov, elemstoDisplay);
