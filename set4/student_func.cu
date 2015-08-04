@@ -42,7 +42,7 @@
    at the end.
 
  */
-const unsigned int maxThreads = 1024;
+const unsigned int maxThreads = 8;
 const unsigned int numBits = 1;
 const unsigned int numBins = 1 << numBits;
 
@@ -83,9 +83,11 @@ unsigned int displayCudaBufferMax(unsigned int* const d_buf, const size_t numEle
   }
 
   displayCudaBufferWindow(d_buf, numElems, begin, lastIndex);
+  std::cout << "last " << std::endl;
   if (numElems > 50) {
-      std::cout << "last " << std::endl;
       displayCudaBufferWindow(d_buf, numElems, numElems - 50, numElems);
+  } else {
+      displayCudaBufferWindow(d_buf, numElems, 0, numElems);
   }
 
   delete[] buf;
@@ -110,12 +112,12 @@ __global__ void histogram(const unsigned int* const d_in,
 }
 
 __device__ void scanReduceForBlock(unsigned int* const d_res,
-                          const size_t size, unsigned int myId) {
+                          const size_t unitialS, const unsigned int size, unsigned int myId) {
     unsigned int nextId;
     unsigned int prevValue;
     unsigned int nextValue;
 
-    for (unsigned int s = 1; s <= size/2; s *= 2) {
+    for (unsigned int s = 1; s <= unitialS/2; s *= 2) {
         __syncthreads();
         prevValue = d_res[myId];
         nextId = myId + s;
@@ -184,7 +186,7 @@ __device__ void scanReduce(const unsigned int* const d_in,
     unsigned int prevValue;
     unsigned int myValue;
 
-    scanReduceForBlock(d_res, maxThreads, myId);
+    scanReduceForBlock(d_res, maxThreads, size, myId);
 
     for (unsigned int s = maxThreads * 2; s <= size; s *= 2) {
         if (s > maxThreads) {
@@ -238,7 +240,7 @@ __global__  void blellochScan(const unsigned int* const d_in,
         return;
     }
     d_res[myId] = d_in[myId];
-    scanReduceForBlock(d_res, myMin(maxThreads, size), myId);
+    scanReduceForBlock(d_res, myMin(maxThreads, size), size, myId);
     d_res[size-1] = 0;
     __syncthreads();
 
@@ -247,7 +249,7 @@ __global__  void blellochScan(const unsigned int* const d_in,
         unsigned int interval = size/ ssize;
         if (myId == tid && myId < ssize) { //исполняем только внутри одного блока
             sdata[myId] = d_res[myId * interval + interval - 1];
-            scanReduceForBlock(sdata, ssize, myId);
+            scanReduceForBlock(sdata, ssize, ssize, myId);
             __syncthreads();
             //scanReduceForBlock(sdata, maxThreads/2, compactedMyId);
             __syncthreads();
@@ -415,7 +417,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
 
-  numElems = 15000;//32;//16;//18000;
+  numElems = 17;//15000;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
@@ -441,15 +443,15 @@ void your_sort(unsigned int* const d_inputVals,
           //checkCudaErrors(cudaMemset(d_temp, 0,  sizeof(unsigned int) * alignedBuferElems));
           clear<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp,alignedBuferElems);
           clear<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp1,alignedBuferElems);
-          std::cout << "after clear" << std::endl;
-          displayCudaBufferMax(d_temp, alignedBuferElems);
+          //std::cout << "after clear" << std::endl;
+          //displayCudaBufferMax(d_temp, alignedBuferElems);
 
           mapToBin<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv,d_temp,mask,i,j,numElems);
-          std::cout << "mapToBin" << j << " " <<  mask << " " << i << std::endl;
-          displayCudaBuffer(d_temp, elemstoDisplay);
+          //std::cout << "mapToBin" << j << " " <<  mask << " " << i << std::endl;
+          //displayCudaBuffer(d_temp, elemstoDisplay);
           //std::cout << "DEEP " << std::endl;
           //displayCudaBufferWindow(d_temp, numElems, 2000, 2010);
-          displayCudaBufferMax(d_temp, alignedBuferElems);
+          //displayCudaBufferMax(d_temp, alignedBuferElems);
 
           blellochScan<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
           blellochScanDownstep<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
