@@ -107,6 +107,16 @@ __device__ unsigned int myMin(const unsigned int a,
     return b;
 }
 
+__global__ void fill10 (      unsigned int* const d_dst,
+                        const unsigned int numElems) {
+    unsigned int tid  = threadIdx.x;
+    unsigned int myId = tid + blockDim.x * blockIdx.x;
+    if (myId >= numElems) {
+        return;
+    }
+    d_dst[myId] = (myId + 1) % 2;
+}
+
 //ALGORITHMS-------------------------------------------------------------------
 
 __global__ void histogram(const unsigned int* const d_in,
@@ -380,7 +390,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
 
-  numElems = 15000;//32;//16;//18000;
+  numElems = 16383;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
@@ -390,14 +400,16 @@ void your_sort(unsigned int* const d_inputVals,
   checkCudaErrors(cudaMalloc((void **) &d_temp,         alignedBuferElems * sizeof(unsigned int)));
   checkCudaErrors(cudaMalloc((void **) &d_temp1,        alignedBuferElems * sizeof(unsigned int)));
 
+  const unsigned int numBlocksForAligned  = (alignedBuferElems + MAX_THREADS - 1) / MAX_THREADS;
+  const unsigned int numBlocksForElements = (numElems          + MAX_THREADS - 1) / MAX_THREADS;
+
+  fill10 <<<numBlocksForElements, MAX_THREADS>>> (d_iv, numElems);
+
   std::cout << "numElems " << numElems << std::endl;
   std::cout << "NUM_BINS " << NUM_BINS << std::endl;
 
   std::cout << "d_inputVals " << std::endl;
   displayCudaBuffer(d_inputVals, elemstoDisplay);
-
-  const unsigned int numBlocksForAligned  = (alignedBuferElems + MAX_THREADS - 1) / MAX_THREADS;
-  const unsigned int numBlocksForElements = (numElems          + MAX_THREADS - 1) / MAX_THREADS;
 
   //a simple radix sort - only guaranteed to work for NUM_BITS that are multiples of 2
   for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += NUM_BITS) {
