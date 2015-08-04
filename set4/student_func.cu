@@ -73,12 +73,15 @@ unsigned int displayCudaBufferMax(const unsigned int* const d_buf,
   checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
   unsigned int max = buf[0];
   unsigned int idx = 0;
+  int checksum = 0;
   for (int i = 0 ; i < numElems; ++i) {
+      checksum += buf[i];
       if (max <= buf[i]) {
           max = buf[i];
           idx = i;
       }
   }
+  std::cout << "checksum " << std::dec << checksum << std::endl;
   std::cout << "max " << std::dec << max << " idx " << idx << std::endl;
   int begin = idx - 10;
   if (begin < 0) begin = 0;
