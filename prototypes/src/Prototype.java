@@ -4,11 +4,19 @@ public class Prototype {
     private static final int NUM_BINS = 1 << NUM_BITS;
 
     private static void displayArray(int[] array) {
+        int max = 0;
+        int maxIndex = 0;
         for (int i=0 ; i < array.length; ++i) {
-            if (i > 13000) {
-                System.out.println(array[i]);
+            int cur = array[i];
+            if (i > 8191) {
+                System.out.println(cur);
+            }
+            if (cur >= max) {
+                max = cur;
+                maxIndex = i;
             }
         }
+        System.out.println("max=" + max + ", idx = " + maxIndex);
     }
 
     private static void scanReduceForBlock(int d_res[],
