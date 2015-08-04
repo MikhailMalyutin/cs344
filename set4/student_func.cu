@@ -203,7 +203,6 @@ __global__  void blellochScan(const unsigned int* const d_in,
             sdata[myId] = d_res[myId * interval + interval - 1];
             scanReduceForBlock(sdata, ssize, ssize, myId);
             __syncthreads();
-            __syncthreads();
             sdata[ssize-1] = 0;
             __syncthreads();
             scanDownStepForBlock(sdata, ssize, myId);
