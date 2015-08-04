@@ -1,5 +1,5 @@
 public class Prototype {
-    private static final int MAX_THREADS = 256;
+    private static final int MAX_THREADS = 1024;
     private static final int NUM_BITS = 1;
     private static final int NUM_BINS = 1 << NUM_BITS;
 
@@ -280,8 +280,8 @@ public class Prototype {
         //blellochScan(inData, outData, alignedBuferElems);
         //scanDownStepForBlock(outData, MAX_THREADS, alignedBuferElems);
         System.out.println(outData);
-        int sortData[] = getUnsortedSeq(1500);
-        int sortVal[] = getUnsortedSeq(1500);
+        int sortData[] = getUnsortedSeq(16383);
+        int sortVal[] = getUnsortedSeq(16383);
         int resData[] = new int[sortData.length];
         int resVal[] = new int[sortData.length];
        // clear(sortData, sortData.length);
