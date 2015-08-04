@@ -145,7 +145,7 @@ __device__ void scanReduceForBlock(      unsigned int* const d_res,
     unsigned int prevValue;
     unsigned int nextValue;
 
-    for (unsigned int s = 1; s <= maxDisplacement/2; s *= 2) {
+    for (unsigned int s = 1; s <= maxDisplacement / 2; s *= 2) {
 
         __syncthreads();
         prevValue = d_res[myId];
@@ -153,7 +153,7 @@ __device__ void scanReduceForBlock(      unsigned int* const d_res,
         nextValue = nextId < size ? d_res[nextId] : 0;
 
         __syncthreads();
-        if (((nextId + 1) % (s*2)) == 0 && (nextId < size)) {
+        if (((nextId + 1) % (s * 2)) == 0 && (nextId < size)) {
             d_res[nextId] = prevValue + nextValue;
         }
     }
