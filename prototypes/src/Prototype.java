@@ -1,7 +1,7 @@
 public class Prototype {
-    private static int maxThreads = 8;
-    private static int numBits = 1;
-    private static int numBins = 1 << numBits;
+    private static final int MAX_THREADS = 256;
+    private static final int NUM_BITS = 1;
+    private static final int NUM_BINS = 1 << NUM_BITS;
 
     private static void scanReduceForBlock(int d_res[],
                                            int initialS, int size) {
@@ -54,19 +54,19 @@ public class Prototype {
             d_res[myId] = d_in[myId];
         }
 
-        scanReduceForBlock(d_res, Math.min(maxThreads, size), size);
+        scanReduceForBlock(d_res, Math.min(MAX_THREADS, size), size);
         d_res[size - 1] = 0;
 
-        int ssize = size / maxThreads;
+        int ssize = size / MAX_THREADS;
         if (ssize > 1) {
             int interval = size/ ssize;
             int sdata[] = new int[ssize];
             for (int myId = 0; myId < ssize; ++myId) {
                 sdata[myId] = d_res[myId * interval + interval - 1];
             }
-            scanReduceForBlock(sdata, maxThreads, ssize);
+            scanReduceForBlock(sdata, MAX_THREADS, ssize);
             sdata[ssize - 1] = 0;
-            scanDownStepForBlock(sdata, maxThreads, ssize);
+            scanDownStepForBlock(sdata, MAX_THREADS, ssize);
             for (int myId = 0; myId < ssize; ++myId) {
                 d_res[myId * interval + interval - 1] = sdata[myId];
             }
@@ -76,9 +76,9 @@ public class Prototype {
     static void histogram(int[] d_in, int[] d_res,
                               int mask,
                               int i,
-                   int numElems, int numBins) {
+                   int numElems, int NUM_BINS) {
         for (int myId = 0; myId < numElems; ++myId) {
-            if (myId < numBins) { //очистка буфера результата
+            if (myId < NUM_BINS) { //очистка буфера результата
                 d_res[myId] = 0;
             }
             int binId = (d_in[myId] & mask) >> i;
@@ -169,18 +169,18 @@ public class Prototype {
 
         int alignedBuferElems = getNearest(numElems);
 
-        d_binScan = new int[numBins];
-        d_binHistogram = new int[numBins];
+        d_binScan = new int[NUM_BINS];
+        d_binHistogram = new int[NUM_BINS];
         d_temp = new int[alignedBuferElems];
         d_temp1 = new int[alignedBuferElems];
 
-        //a simple radix sort - only guaranteed to work for numBits that are multiples of 2
-        for (int i = 0; i < 8 * 4; i += numBits) {
-        int mask = (numBins - 1) << i;
+        //a simple radix sort - only guaranteed to work for NUM_BITS that are multiples of 2
+        for (int i = 0; i < 8 * 4; i += NUM_BITS) {
+        int mask = (NUM_BINS - 1) << i;
 
         clear(d_ov,numElems);
 
-        for (int j = 0; j < numBins; ++j) {
+        for (int j = 0; j < NUM_BINS; ++j) {
             clear(d_temp, alignedBuferElems);
             clear(d_temp1, alignedBuferElems);
 
@@ -194,10 +194,10 @@ public class Prototype {
             sum(d_temp1,d_ov,numElems);
         }
 
-        histogram(d_iv, d_binHistogram, mask, i, numElems, numBins);
+        histogram(d_iv, d_binHistogram, mask, i, numElems, NUM_BINS);
 
-        blellochScan(d_binHistogram, d_binScan, numBins);
-        blellochScanDownstep(d_binScan, d_binScan, numBins);
+        blellochScan(d_binHistogram, d_binScan, NUM_BINS);
+        blellochScanDownstep(d_binScan, d_binScan, NUM_BINS);
 
         gather(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
 
@@ -223,7 +223,7 @@ public class Prototype {
     }
 
     private static void blellochScanDownstep(int[] d_temp, int[] d_temp1, int alignedBuferElems) {
-        scanDownStepForBlock(d_temp1, maxThreads, alignedBuferElems);
+        scanDownStepForBlock(d_temp1, MAX_THREADS, alignedBuferElems);
     }
 
     private static void clear(int[] d_ov, int numElems) {
@@ -236,9 +236,9 @@ public class Prototype {
         int smallData[] = {1,2};
         int smallResult[] = {0, 0};
         //blellochScan(smallData, smallResult, smallResult.length);
-        //scanDownStepForBlock(smallResult, maxThreads, smallResult.length);
+        //scanDownStepForBlock(smallResult, MAX_THREADS, smallResult.length);
 
-        int inData[] = {1,
+        int inDataUnwr[] = {1,
                 1,
                 1,
                 0,
@@ -255,7 +255,7 @@ public class Prototype {
                 1,
                 1,
                 0,
-               /** 0,
+                /**0,
                 1,
                 0,
                 0,
@@ -271,12 +271,17 @@ public class Prototype {
                 1,
                 1**/
         };
-        int outData[] = new int[inData.length];
-        //blellochScan(inData, outData, inData.length);
-        //scanDownStepForBlock(outData, maxThreads, inData.length);
+        int alignedBuferElems = getNearest(inDataUnwr.length);
+        int inData[] = new int[alignedBuferElems];
+        for (int i=0; i<inDataUnwr.length; ++i) {
+            inData[i] = inDataUnwr[i];
+        }
+        int outData[] = new int[alignedBuferElems];
+        //blellochScan(inData, outData, alignedBuferElems);
+        //scanDownStepForBlock(outData, MAX_THREADS, alignedBuferElems);
         System.out.println(outData);
-        int sortData[] = getUnsortedSeq(17);
-        int sortVal[] = getUnsortedSeq(17);
+        int sortData[] = getUnsortedSeq(1500);
+        int sortVal[] = getUnsortedSeq(1500);
         int resData[] = new int[sortData.length];
         int resVal[] = new int[sortData.length];
        // clear(sortData, sortData.length);
