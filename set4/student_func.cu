@@ -162,7 +162,7 @@ __device__ void scanReduceForBlock(      unsigned int* const d_res,
 __device__  void scanDownStepDevice(      unsigned int* const d_res,
                                     const unsigned int        initialS,
                                     const unsigned int        myId) {
-    unsigned int prevId;
+    int prevId;
     unsigned int prevValue;
     unsigned int myValue;
 
