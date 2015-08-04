@@ -54,7 +54,7 @@ void displayCudaBufferWindow(      unsigned int* const d_buf,
                              const size_t              to) {
   unsigned int *buf = new unsigned int[numElems];
   checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
-  for (int i=from ; i< to; ++i) {
+  for (int i = from ; i < to; ++i) {
       std::cout << std::hex << buf[i] << " " << std::endl;
   }
   std::cout << std::endl;
@@ -74,7 +74,7 @@ unsigned int displayCudaBufferMax(      unsigned int* const d_buf,
   checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
   unsigned int max = buf[0];
   unsigned int idx = 0;
-  for (int i=0 ; i< numElems; ++i) {
+  for (int i = 0 ; i < numElems; ++i) {
       if (max <= buf[i]) {
           max = buf[i];
           idx = i;
@@ -364,11 +364,13 @@ unsigned int getNearest(unsigned int const number) {
     return result;
 }
 
+//MAIN--------------------------------------------------------------------
+
 void your_sort(unsigned int* const d_inputVals,
                unsigned int* const d_inputPos,
                unsigned int* const d_outputVals,
                unsigned int* const d_outputPos,
-               size_t numElems)
+               size_t              numElems)
 {
   unsigned int* d_binScan;
   unsigned int* d_binHistogram;
