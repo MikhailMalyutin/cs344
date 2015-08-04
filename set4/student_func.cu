@@ -42,11 +42,16 @@
    at the end.
 
  */
-const unsigned int maxThreads = 1024;
-const unsigned int numBits = 1;
-const unsigned int numBins = 1 << numBits;
+const unsigned int MAX_THREADS = 1024;
+const unsigned int NUM_BITS    = 1;
+const unsigned int NUM_BINS    = 1 << NUM_BITS;
 
-void displayCudaBufferWindow(unsigned int* const d_buf, const size_t numElems, const size_t from, const size_t to) {
+//HELPERS----------------------------------------------------------------------
+
+void displayCudaBufferWindow(      unsigned int* const d_buf,
+                             const size_t              numElems,
+                             const size_t              from,
+                             const size_t              to) {
   unsigned int *buf = new unsigned int[numElems];
   checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
   for (int i=from ; i< to; ++i) {
@@ -57,12 +62,14 @@ void displayCudaBufferWindow(unsigned int* const d_buf, const size_t numElems, c
   delete[] buf;
 }
 
-void displayCudaBuffer(unsigned int* const d_buf, const size_t numElems) {
+void displayCudaBuffer(      unsigned int* const d_buf,
+                       const size_t              numElems) {
   displayCudaBufferWindow(d_buf, numElems, 0, numElems);
 }
 
 
-unsigned int displayCudaBufferMax(unsigned int* const d_buf, const size_t numElems) {
+unsigned int displayCudaBufferMax(      unsigned int* const d_buf,
+                                  const size_t              numElems) {
   unsigned int *buf = new unsigned int[numElems];
   checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
   unsigned int max = buf[0];
@@ -94,13 +101,16 @@ unsigned int displayCudaBufferMax(unsigned int* const d_buf, const size_t numEle
   return max;
 }
 
+//ALGORITHMS-------------------------------------------------------------------
+
 __global__ void histogram(const unsigned int* const d_in,
-                          unsigned int* const d_res,
-                          const unsigned int mask,
-                          const unsigned int i,const size_t numElems, const unsigned int numBins) {
+                                unsigned int* const d_res,
+                          const unsigned int        mask,
+                          const unsigned int        i,
+                          const size_t              numElems) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + blockDim.x * blockIdx.x;
-    if (myId < numBins) { //очистка буфера результата
+    if (myId < NUM_BINS) { //очистка буфера результата
        d_res[myId] = 0;
     }
     if (myId >=numElems) {
@@ -111,8 +121,10 @@ __global__ void histogram(const unsigned int* const d_in,
     atomicAdd(&(d_res[binId]), 1);
 }
 
-__device__ void scanReduceForBlock(unsigned int* const d_res,
-                          const size_t unitialS, const unsigned int size, unsigned int myId) {
+__device__ void scanReduceForBlock(      unsigned int* const d_res,
+                                   const size_t              unitialS,
+                                   const unsigned int        size,
+                                   unsigned int              myId) {
     unsigned int nextId;
     unsigned int prevValue;
     unsigned int nextValue;
@@ -130,8 +142,8 @@ __device__ void scanReduceForBlock(unsigned int* const d_res,
 
 }
 
-__device__  void scanDownStepForBlock(unsigned int* const d_res,
-                          const unsigned int initialS, unsigned int myId1) {
+__device__  void scanDownStepForBlock(      unsigned int* const d_res,
+                                      const unsigned int        initialS) {
     unsigned int prevId;
     unsigned int prevValue;
     unsigned int myValue;
@@ -156,8 +168,9 @@ __device__  void scanDownStepForBlock(unsigned int* const d_res,
 
 }
 
-__device__  void scanDownStepDevice(unsigned int* const d_res,
-                          const unsigned int initialS, unsigned int myId) {
+__device__  void scanDownStepDevice(      unsigned int* const d_res,
+                                    const unsigned int        initialS,
+                                    const unsigned int        myId) {
     unsigned int prevId;
     unsigned int prevValue;
     unsigned int myValue;
@@ -176,15 +189,15 @@ __device__  void scanDownStepDevice(unsigned int* const d_res,
 
 }
 
-
-__device__ unsigned int myMin(const unsigned int a, const unsigned int b) {
+__device__ unsigned int myMin(const unsigned int a,
+                              const unsigned int b) {
     if (a < b) return a;
     return b;
 }
 
 __global__  void blellochScan(const unsigned int* const d_in,
-                          unsigned int* const d_res,
-                          const size_t size) {
+                                    unsigned int* const d_res,
+                              const size_t              size) {
     extern __shared__ unsigned int sdata[];
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
@@ -192,11 +205,11 @@ __global__  void blellochScan(const unsigned int* const d_in,
         return;
     }
     d_res[myId] = d_in[myId];
-    scanReduceForBlock(d_res, myMin(maxThreads, size), size, myId);
+    scanReduceForBlock(d_res, myMin(MAX_THREADS, size), size, myId);
     d_res[size-1] = 0;
     __syncthreads();
 
-    unsigned int ssize = size / maxThreads; //сколько элементов будет в прореженном массиве
+    unsigned int ssize = size / MAX_THREADS; //сколько элементов будет в прореженном массиве
     if (ssize > 1) {
         unsigned int interval = size/ ssize;
         if (myId == tid && myId < ssize) { //исполняем только внутри одного блока
@@ -205,22 +218,21 @@ __global__  void blellochScan(const unsigned int* const d_in,
             __syncthreads();
             sdata[ssize-1] = 0;
             __syncthreads();
-            scanDownStepForBlock(sdata, ssize, myId);
+            scanDownStepForBlock(sdata, ssize);
             d_res[myId * interval + interval - 1] = sdata[myId];
         }
     }
 }
 
 __global__  void blellochScanDownstep(const unsigned int* const d_in,
-                          unsigned int* const d_res,
-                          const size_t size) {
-    extern __shared__ unsigned int sdata[];
+                                            unsigned int* const d_res,
+                                      const size_t              size) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
     if (myId >=size) {
         return;
     }
-    unsigned int initialS = myMin(maxThreads, size);
+    unsigned int initialS = myMin(MAX_THREADS, size);
     scanDownStepDevice(d_res, initialS, myId);
 }
 
@@ -234,9 +246,9 @@ d_vals_dst также будет содержать результат
 __global__ void gather(const unsigned int* const d_vals_src,
                        const unsigned int* const d_pos_src,
                        const unsigned int* const d_new_index_src,
-                       unsigned int* const d_vals_dst,
-                       unsigned int* const d_pos_dst,
-                       const unsigned int numElems) {
+                             unsigned int* const d_vals_dst,
+                             unsigned int* const d_pos_dst,
+                       const unsigned int        numElems) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
@@ -256,12 +268,12 @@ d_binScan - для каждого элемента корзины,
 d_disp_src - содержит смещение для данного id для конкретногй корзины
 **/
 __global__ void getNewIndexes(const unsigned int* const d_vals_src,
-                       const unsigned int* const d_disp_src,
-                       const unsigned int* const d_binScan,
-                       unsigned int* const d_new_index_dst,
-                       const unsigned int mask,
-                       const unsigned int i,
-                       const unsigned int numElems) {
+                              const unsigned int* const d_disp_src,
+                              const unsigned int* const d_binScan,
+                                    unsigned int* const d_new_index_dst,
+                              const unsigned int        mask,
+                              const unsigned int        i,
+                              const unsigned int        numElems) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
@@ -278,11 +290,11 @@ __global__ void getNewIndexes(const unsigned int* const d_vals_src,
 }
 
 __global__ void mapToBin(const unsigned int* const d_vals_src,
-                       unsigned int* const d_vals_dst,
-                       const unsigned int mask,
-                       const unsigned int i,
-                       const unsigned int mappedBean,
-                       const unsigned int numElems) {
+                               unsigned int* const d_vals_dst,
+                         const unsigned int        mask,
+                         const unsigned int        i,
+                         const unsigned int        mappedBean,
+                         const unsigned int        numElems) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
@@ -294,11 +306,11 @@ __global__ void mapToBin(const unsigned int* const d_vals_src,
 }
 
 __global__ void resetMapToBin(const unsigned int* const d_vals_src,
-                       unsigned int* const d_vals_dst,
-                       const unsigned int mask,
-                       const unsigned int i,
-                       const unsigned int mappedBean,
-                       const unsigned int numElems) {
+                                    unsigned int* const d_vals_dst,
+                              const unsigned int        mask,
+                              const unsigned int        i,
+                              const unsigned int        mappedBean,
+                              const unsigned int        numElems) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
@@ -311,8 +323,8 @@ __global__ void resetMapToBin(const unsigned int* const d_vals_src,
     }
 }
 
-__global__ void clear(unsigned int* const d_vals_dst,
-                       const unsigned int numElems) {
+__global__ void clear(      unsigned int* const d_vals_dst,
+                      const unsigned int        numElems) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
@@ -323,8 +335,8 @@ __global__ void clear(unsigned int* const d_vals_dst,
 }
 
 __global__ void copy(const unsigned int* const d_src,
-                     unsigned int* const d_dst,
-                     const unsigned int numElems) {
+                           unsigned int* const d_dst,
+                     const unsigned int        numElems) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + blockDim.x * blockIdx.x;
     if (myId >= numElems) {
@@ -334,8 +346,8 @@ __global__ void copy(const unsigned int* const d_src,
 }
 
 __global__ void sum(const unsigned int* const d_src,
-                     unsigned int* const d_dst,
-                     const unsigned int numElems) {
+                          unsigned int* const d_dst,
+                    const unsigned int numElems) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + blockDim.x * blockIdx.x;
     if (myId >= numElems) {
@@ -372,39 +384,39 @@ void your_sort(unsigned int* const d_inputVals,
 
   int alignedBuferElems = getNearest(numElems);
 
-  checkCudaErrors(cudaMalloc((void **) &d_binScan, numBins * sizeof(unsigned int)));
-  checkCudaErrors(cudaMalloc((void **) &d_binHistogram, numBins * sizeof(unsigned int)));
+  checkCudaErrors(cudaMalloc((void **) &d_binScan, NUM_BINS * sizeof(unsigned int)));
+  checkCudaErrors(cudaMalloc((void **) &d_binHistogram, NUM_BINS * sizeof(unsigned int)));
   checkCudaErrors(cudaMalloc((void **) &d_temp, alignedBuferElems * sizeof(unsigned int)));
   checkCudaErrors(cudaMalloc((void **) &d_temp1, alignedBuferElems * sizeof(unsigned int)));
 
   std::cout << "numElems " << numElems << std::endl;
-  std::cout << "numBins " << numBins << std::endl;
+  std::cout << "NUM_BINS " << NUM_BINS << std::endl;
 
   std::cout << "d_inputVals " << std::endl;
   displayCudaBuffer(d_inputVals, elemstoDisplay);
 
-  //a simple radix sort - only guaranteed to work for numBits that are multiples of 2
-  for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += numBits) {
-      unsigned int mask = (numBins - 1) << i;
+  //a simple radix sort - only guaranteed to work for NUM_BITS that are multiples of 2
+  for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += NUM_BITS) {
+      unsigned int mask = (NUM_BINS - 1) << i;
 
-      clear<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_ov,numElems);
+      clear<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_ov,numElems);
 
-      for (unsigned int j = 0; j < numBins; ++j) {
+      for (unsigned int j = 0; j < NUM_BINS; ++j) {
           //checkCudaErrors(cudaMemset(d_temp, 0,  sizeof(unsigned int) * alignedBuferElems));
-          clear<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp,alignedBuferElems);
-          clear<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp1,alignedBuferElems);
+          clear<<<(alignedBuferElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_temp,alignedBuferElems);
+          clear<<<(alignedBuferElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_temp1,alignedBuferElems);
           //std::cout << "after clear" << std::endl;
           //displayCudaBufferMax(d_temp, alignedBuferElems);
 
-          mapToBin<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv,d_temp,mask,i,j,numElems);
+          mapToBin<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv,d_temp,mask,i,j,numElems);
           //std::cout << "mapToBin" << j << " " <<  mask << " " << i << std::endl;
           //displayCudaBuffer(d_temp, elemstoDisplay);
           //std::cout << "DEEP " << std::endl;
           //displayCudaBufferWindow(d_temp, numElems, 2000, 2010);
           //displayCudaBufferMax(d_temp, alignedBuferElems);
 
-          blellochScan<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
-          blellochScanDownstep<<<(alignedBuferElems+maxThreads-1)/maxThreads, maxThreads, maxThreads * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
+          blellochScan<<<(alignedBuferElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
+          blellochScanDownstep<<<(alignedBuferElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>(d_temp, d_temp1, alignedBuferElems);
 
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
@@ -416,40 +428,40 @@ void your_sort(unsigned int* const d_inputVals,
 
           }
 
-          resetMapToBin<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv,d_temp1,mask,i,j,numElems);
+          resetMapToBin<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv,d_temp1,mask,i,j,numElems);
           std::cout << "resetMapToBin " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
           displayCudaBufferMax(d_temp1, numElems);
 
-          sum<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_temp1,d_ov,numElems);
+          sum<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_temp1,d_ov,numElems);
           std::cout << "sum " << std::endl;
           displayCudaBufferMax(d_ov, numElems);
           displayCudaBuffer(d_ov, elemstoDisplay);
       }
 
-      histogram<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_binHistogram, mask, i, numElems, numBins);
-      //histogram<<<1, numElems>>>(d_iv, d_binHistogram, mask, i, numElems, numBins);
+      histogram<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv, d_binHistogram, mask, i, numElems);
+      //histogram<<<1, numElems>>>(d_iv, d_binHistogram, mask, i, numElems, NUM_BINS);
       std::cout << "d_binHistogram " << std::endl;
-      displayCudaBuffer(d_binHistogram, numBins);
+      displayCudaBuffer(d_binHistogram, NUM_BINS);
 
       //perform exclusive prefix sum (scan) on binHistogram to get starting
       //location for each bin
-      //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
-      //scan<<<1, numBins, numBins*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, numBins);
-      blellochScan<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binHistogram, d_binScan, numBins);
-      blellochScanDownstep<<<1, numBins, numBins * sizeof(unsigned int)>>>(d_binScan, d_binScan, numBins);
+      //scan<<<1, NUM_BINS, NUM_BINS*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, NUM_BINS);
+      //scan<<<1, NUM_BINS, NUM_BINS*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, NUM_BINS);
+      blellochScan<<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>(d_binHistogram, d_binScan, NUM_BINS);
+      blellochScanDownstep<<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>(d_binScan, d_binScan, NUM_BINS);
       std::cout << "d_binScan " << std::endl;
-      displayCudaBuffer(d_binScan, numBins);
+      displayCudaBuffer(d_binScan, NUM_BINS);
 
       //Gather everything into the correct location
       //need to move vals and positions
       unsigned int* d_disp_src = d_ov;
       unsigned int* d_new_index = d_op;
       displayCudaBufferMax(d_disp_src, numElems);
-      getNewIndexes<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
+      getNewIndexes<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
       std::cout << "after getNewIndexes " << std::endl;
       displayCudaBuffer(d_new_index, elemstoDisplay);
-      gather<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
+      gather<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
       //gather<<<1, numElems>>>(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
       std::cout << "after gather " << std::endl;
       displayCudaBuffer(d_ov, elemstoDisplay);
@@ -460,8 +472,8 @@ void your_sort(unsigned int* const d_inputVals,
   }
 
   //we did an even number of iterations, need to copy from input buffer into output
-  copy<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_iv, d_ov, numElems);
-  copy<<<(numElems+maxThreads-1)/maxThreads, maxThreads>>>(d_ip, d_op, numElems);
+  copy<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_iv, d_ov, numElems);
+  copy<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_ip, d_op, numElems);
   //copy<<<1, numElems>>>(d_iv, d_ov, numElems);
   //copy<<<1, numElems>>>(d_ip, d_op, numElems);
 
