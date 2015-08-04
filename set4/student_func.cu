@@ -93,7 +93,7 @@ unsigned int displayCudaBufferMax(const unsigned int* const d_buf,
   if (numElems > 50) {
       displayCudaBufferWindow(d_buf, numElems, numElems - 50, numElems);
   } else {
-      displayCudaBufferWindow(d_buf, numElems, 0, numElems);
+      displayCudaBufferWindow(d_buf, numElems, 0,             numElems);
   }
 
   delete[] buf;
@@ -255,7 +255,7 @@ __global__ void gather(const unsigned int* const d_vals_src,
                              unsigned int* const d_vals_dst,
                              unsigned int* const d_pos_dst,
                        const unsigned int        numElems) {
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
     if (myId >= numElems) {
@@ -282,7 +282,7 @@ __global__ void getNewIndexes(const unsigned int* const d_vals_src,
                               const unsigned int        mask,
                               const unsigned int        i,
                               const unsigned int        numElems) {
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
     if (myId >= numElems) {
@@ -291,8 +291,9 @@ __global__ void getNewIndexes(const unsigned int* const d_vals_src,
     unsigned int myIdOffset = d_disp_src[myId]; //у нас свой ид, для нашего ид определяем смещение,
     //кладем в локальную переменную
     unsigned int binId = (d_vals_src[myId] & mask) >> i;
+
     __syncthreads();
-    unsigned int offset = d_binScan[binId];
+    unsigned int offset   = d_binScan[binId];
     unsigned int newIndex = offset + myIdOffset;
     d_new_index_dst[myId] = newIndex;
 }
@@ -439,7 +440,7 @@ void your_sort(unsigned int* const d_inputVals,
 
           if (max > numElems) {
               std::cout << "ERROR " << std::endl;
-              displayCudaBufferWindow(d_temp, numElems,  6391, 6403);
+              displayCudaBufferWindow(d_temp,  numElems, 6391, 6403);
               displayCudaBufferWindow(d_temp1, numElems, 6391, 6403);
           }
 
