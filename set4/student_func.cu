@@ -151,13 +151,13 @@ __device__  void scanDownStepDevice(      unsigned int* const d_res,
 
     for (unsigned int s = initialS; s >= 2; s /= 2) {
         __syncthreads();
-        prevId = myId - s / 2;
+        prevId    = myId - s / 2;
         prevValue = (myId >= s/2) ? d_res[prevId] : 0;
-        myValue = d_res[myId];
+        myValue   =                 d_res[myId];
         __syncthreads();
         if (((myId + 1) % s) == 0 && myId >= s/2) {
             d_res[prevId] = myValue;
-            d_res[myId] = myValue + prevValue;
+            d_res[myId]   = myValue + prevValue;
         }
     }
 
@@ -169,7 +169,7 @@ __device__  void scanDownStepForBlock(      unsigned int* const d_res,
     unsigned int prevValue;
     unsigned int myValue;
 
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
     if (myId >= size || tid != myId) {
         return;
@@ -188,7 +188,7 @@ __global__  void blellochScan(const unsigned int* const d_in,
                                     unsigned int* const d_res,
                               const size_t              size) {
     extern __shared__ unsigned int sdata[];
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
     if (myId >=size) {
         return;
@@ -219,7 +219,7 @@ __global__  void blellochScanDownstep(const unsigned int* const d_in,
                                       const size_t              size) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
-    if (myId >=size) {
+    if (myId >= size) {
         return;
     }
     unsigned int initialS = myMin(MAX_THREADS, size);
@@ -285,7 +285,7 @@ __global__ void mapToBin(const unsigned int* const d_vals_src,
                          const unsigned int        i,
                          const unsigned int        mappedBean,
                          const unsigned int        numElems) {
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
     if (myId >= numElems) {
@@ -301,7 +301,7 @@ __global__ void resetMapToBin(const unsigned int* const d_vals_src,
                               const unsigned int        i,
                               const unsigned int        mappedBean,
                               const unsigned int        numElems) {
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
     if (myId >= numElems) {
@@ -315,7 +315,7 @@ __global__ void resetMapToBin(const unsigned int* const d_vals_src,
 
 __global__ void clear(      unsigned int* const d_vals_dst,
                       const unsigned int        numElems) {
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
 
     if (myId >= numElems) {
@@ -327,7 +327,7 @@ __global__ void clear(      unsigned int* const d_vals_dst,
 __global__ void copy(const unsigned int* const d_src,
                            unsigned int* const d_dst,
                      const unsigned int        numElems) {
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + blockDim.x * blockIdx.x;
     if (myId >= numElems) {
         return;
@@ -338,7 +338,7 @@ __global__ void copy(const unsigned int* const d_src,
 __global__ void sum(const unsigned int* const d_src,
                           unsigned int* const d_dst,
                     const unsigned int numElems) {
-    unsigned int tid = threadIdx.x;
+    unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + blockDim.x * blockIdx.x;
     if (myId >= numElems) {
         return;
@@ -400,8 +400,6 @@ void your_sort(unsigned int* const d_inputVals,
           //checkCudaErrors(cudaMemset(d_temp, 0,  sizeof(unsigned int) * alignedBuferElems));
           clear <<<numBlocksForAligned, MAX_THREADS>>> (d_temp,  alignedBuferElems);
           clear <<<numBlocksForAligned, MAX_THREADS>>> (d_temp1, alignedBuferElems);
-          //std::cout << "after clear" << std::endl;
-          //displayCudaBufferMax(d_temp, alignedBuferElems);
 
           mapToBin <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_temp, mask, i, j, numElems);
           //std::cout << "mapToBin" << j << " " <<  mask << " " << i << std::endl;
@@ -418,11 +416,11 @@ void your_sort(unsigned int* const d_inputVals,
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1, elemstoDisplay);
           unsigned int max = displayCudaBufferMax(d_temp1, alignedBuferElems);
+
           if (max > numElems) {
               std::cout << "ERROR " << std::endl;
               displayCudaBufferWindow(d_temp, numElems,  6391, 6403);
               displayCudaBufferWindow(d_temp1, numElems, 6391, 6403);
-
           }
 
           resetMapToBin <<<numBlocksForElements, MAX_THREADS>>>
@@ -456,7 +454,7 @@ void your_sort(unsigned int* const d_inputVals,
 
       //Gather everything into the correct location
       //need to move vals and positions
-      unsigned int* d_disp_src = d_ov;
+      unsigned int* d_disp_src  = d_ov;
       unsigned int* d_new_index = d_op;
       displayCudaBufferMax(d_disp_src, numElems);
       getNewIndexes <<<numBlocksForElements, MAX_THREADS>>>
@@ -465,7 +463,6 @@ void your_sort(unsigned int* const d_inputVals,
       displayCudaBuffer(d_new_index, elemstoDisplay);
       gather <<<numBlocksForElements, MAX_THREADS>>>
              (d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
-      //gather<<<1, numElems>>>(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
       std::cout << "after gather " << std::endl;
       displayCudaBuffer(d_ov, elemstoDisplay);
 
@@ -477,8 +474,6 @@ void your_sort(unsigned int* const d_inputVals,
   //we did an even number of iterations, need to copy from input buffer into output
   copy <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_ov, numElems);
   copy <<<numBlocksForElements, MAX_THREADS>>> (d_ip, d_op, numElems);
-  //copy<<<1, numElems>>>(d_iv, d_ov, numElems);
-  //copy<<<1, numElems>>>(d_ip, d_op, numElems);
 
   std::cout << "d_outputVals " << std::endl;
   displayCudaBuffer(d_outputVals, elemstoDisplay);
