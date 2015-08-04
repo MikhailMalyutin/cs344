@@ -122,14 +122,14 @@ __global__ void histogram(const unsigned int* const d_in,
 }
 
 __device__ void scanReduceForBlock(      unsigned int* const d_res,
-                                   const size_t              unitialS,
+                                   const size_t              maxDisplacement,
                                    const unsigned int        size,
                                    unsigned int              myId) {
     unsigned int nextId;
     unsigned int prevValue;
     unsigned int nextValue;
 
-    for (unsigned int s = 1; s <= unitialS/2; s *= 2) {
+    for (unsigned int s = 1; s <= maxDisplacement/2; s *= 2) {
         __syncthreads();
         prevValue = d_res[myId];
         nextId = myId + s;
@@ -219,6 +219,7 @@ __global__  void blellochScan(const unsigned int* const d_in,
             sdata[ssize-1] = 0;
             __syncthreads();
             scanDownStepForBlock(sdata, ssize);
+            __syncthreads();
             d_res[myId * interval + interval - 1] = sdata[myId];
         }
     }
