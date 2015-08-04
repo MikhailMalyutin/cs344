@@ -48,7 +48,7 @@ const unsigned int NUM_BINS    = 1 << NUM_BITS;
 
 //HELPERS----------------------------------------------------------------------
 
-void displayCudaBufferWindow(      unsigned int* const d_buf,
+void displayCudaBufferWindow(const unsigned int* const d_buf,
                              const size_t              numElems,
                              const size_t              from,
                              const size_t              to) {
@@ -62,13 +62,13 @@ void displayCudaBufferWindow(      unsigned int* const d_buf,
   delete[] buf;
 }
 
-void displayCudaBuffer(      unsigned int* const d_buf,
+void displayCudaBuffer(const unsigned int* const d_buf,
                        const size_t              numElems) {
   displayCudaBufferWindow(d_buf, numElems, 0, numElems);
 }
 
 
-unsigned int displayCudaBufferMax(      unsigned int* const d_buf,
+unsigned int displayCudaBufferMax(const unsigned int* const d_buf,
                                   const size_t              numElems) {
   unsigned int *buf = new unsigned int[numElems];
   checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
@@ -101,6 +101,12 @@ unsigned int displayCudaBufferMax(      unsigned int* const d_buf,
   return max;
 }
 
+__device__ unsigned int myMin(const unsigned int a,
+                              const unsigned int b) {
+    if (a < b) return a;
+    return b;
+}
+
 //ALGORITHMS-------------------------------------------------------------------
 
 __global__ void histogram(const unsigned int* const d_in,
@@ -113,10 +119,11 @@ __global__ void histogram(const unsigned int* const d_in,
     if (myId < NUM_BINS) { //очистка буфера результата
        d_res[myId] = 0;
     }
-    if (myId >=numElems) {
+    if (myId >= numElems) {
         return;
     }
     unsigned int binId = (d_in[myId] & mask) >> i;
+
     __syncthreads();
     atomicAdd(&(d_res[binId]), 1);
 }
@@ -130,10 +137,12 @@ __device__ void scanReduceForBlock(      unsigned int* const d_res,
     unsigned int nextValue;
 
     for (unsigned int s = 1; s <= maxDisplacement/2; s *= 2) {
+
         __syncthreads();
         prevValue = d_res[myId];
-        nextId = myId + s;
+        nextId    = myId + s;
         nextValue = nextId < size ? d_res[nextId] : 0;
+
         __syncthreads();
         if (((nextId + 1) % (s*2)) == 0 && (nextId < size)) {
             d_res[nextId] = prevValue + nextValue;
@@ -150,17 +159,18 @@ __device__  void scanDownStepDevice(      unsigned int* const d_res,
     unsigned int myValue;
 
     for (unsigned int s = initialS; s >= 2; s /= 2) {
+
         __syncthreads();
         prevId    = myId - s / 2;
         prevValue = (myId >= s/2) ? d_res[prevId] : 0;
         myValue   =                 d_res[myId];
+
         __syncthreads();
         if (((myId + 1) % s) == 0 && myId >= s/2) {
             d_res[prevId] = myValue;
             d_res[myId]   = myValue + prevValue;
         }
     }
-
 }
 
 __device__  void scanDownStepForBlock(      unsigned int* const d_res,
@@ -178,12 +188,6 @@ __device__  void scanDownStepForBlock(      unsigned int* const d_res,
     scanDownStepDevice(d_res, size, myId);
 }
 
-__device__ unsigned int myMin(const unsigned int a,
-                              const unsigned int b) {
-    if (a < b) return a;
-    return b;
-}
-
 __global__  void blellochScan(const unsigned int* const d_in,
                                     unsigned int* const d_res,
                               const size_t              size) {
@@ -196,18 +200,21 @@ __global__  void blellochScan(const unsigned int* const d_in,
     d_res[myId] = d_in[myId];
     scanReduceForBlock(d_res, myMin(MAX_THREADS, size), size, myId);
     d_res[size-1] = 0;
-    __syncthreads();
 
+    __syncthreads();
     unsigned int ssize = size / MAX_THREADS; //сколько элементов будет в прореженном массиве
     if (ssize > 1) {
         unsigned int interval = size/ ssize;
         if (myId == tid && myId < ssize) { //исполняем только внутри одного блока
             sdata[myId] = d_res[myId * interval + interval - 1];
             scanReduceForBlock(sdata, ssize, ssize, myId);
+
             __syncthreads();
             sdata[ssize-1] = 0;
+
             __syncthreads();
             scanDownStepForBlock(sdata, ssize);
+
             __syncthreads();
             d_res[myId * interval + interval - 1] = sdata[myId];
         }
@@ -245,8 +252,10 @@ __global__ void gather(const unsigned int* const d_vals_src,
     if (myId >= numElems) {
         return;
     }
+
     __syncthreads();
     unsigned int newIndex = d_new_index_src[myId];
+
     __syncthreads();
     d_vals_dst[newIndex] = d_vals_src[myId];
     d_pos_dst[newIndex]  = d_pos_src[myId];
@@ -376,10 +385,10 @@ void your_sort(unsigned int* const d_inputVals,
 
   int alignedBuferElems = getNearest(numElems);
 
-  checkCudaErrors(cudaMalloc((void **) &d_binScan, NUM_BINS * sizeof(unsigned int)));
-  checkCudaErrors(cudaMalloc((void **) &d_binHistogram, NUM_BINS * sizeof(unsigned int)));
-  checkCudaErrors(cudaMalloc((void **) &d_temp, alignedBuferElems * sizeof(unsigned int)));
-  checkCudaErrors(cudaMalloc((void **) &d_temp1, alignedBuferElems * sizeof(unsigned int)));
+  checkCudaErrors(cudaMalloc((void **) &d_binScan,      NUM_BINS          * sizeof(unsigned int)));
+  checkCudaErrors(cudaMalloc((void **) &d_binHistogram, NUM_BINS          * sizeof(unsigned int)));
+  checkCudaErrors(cudaMalloc((void **) &d_temp,         alignedBuferElems * sizeof(unsigned int)));
+  checkCudaErrors(cudaMalloc((void **) &d_temp1,        alignedBuferElems * sizeof(unsigned int)));
 
   std::cout << "numElems " << numElems << std::endl;
   std::cout << "NUM_BINS " << NUM_BINS << std::endl;
@@ -443,8 +452,6 @@ void your_sort(unsigned int* const d_inputVals,
 
       //perform exclusive prefix sum (scan) on binHistogram to get starting
       //location for each bin
-      //scan<<<1, NUM_BINS, NUM_BINS*sizeof(unsigned int)>>>(d_binHistogram, d_binScan, NUM_BINS);
-      //scan<<<1, NUM_BINS, NUM_BINS*sizeof(unsigned int)>>>(d_binHistogram, d_binHistogram, NUM_BINS);
       blellochScan         <<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>
                            (d_binHistogram, d_binScan, NUM_BINS);
       blellochScanDownstep <<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>
