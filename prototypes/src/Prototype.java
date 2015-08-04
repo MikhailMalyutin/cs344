@@ -3,6 +3,14 @@ public class Prototype {
     private static final int NUM_BITS = 1;
     private static final int NUM_BINS = 1 << NUM_BITS;
 
+    private static void displayArray(int[] array) {
+        for (int i=0 ; i < array.length; ++i) {
+            if (i > 13000) {
+                System.out.println(array[i]);
+            }
+        }
+    }
+
     private static void scanReduceForBlock(int d_res[],
                                            int initialS, int size) {
         int prevId;
@@ -188,6 +196,8 @@ public class Prototype {
 
             blellochScan(d_temp, d_temp1, alignedBuferElems);
             blellochScanDownstep(d_temp, d_temp1, alignedBuferElems);
+
+            displayArray(d_temp1);
 
             resetMapToBin(d_iv, d_temp1, mask, i, j, numElems);
 
