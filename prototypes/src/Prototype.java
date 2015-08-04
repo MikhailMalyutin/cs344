@@ -6,8 +6,10 @@ public class Prototype {
     private static void displayArray(int[] array) {
         int max = 0;
         int maxIndex = 0;
+        int checksum = 0;
         for (int i=0 ; i < array.length; ++i) {
             int cur = array[i];
+            checksum += cur;
             if (i > 8191) {
                 System.out.println(cur);
             }
@@ -17,6 +19,7 @@ public class Prototype {
             }
         }
         System.out.println("max=" + max + ", idx = " + maxIndex);
+        System.out.println("checksum=" + checksum);
     }
 
     private static void scanReduceForBlock(int d_res[],
