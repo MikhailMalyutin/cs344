@@ -184,6 +184,7 @@ __device__  void scanDownStepDevice(      unsigned int* const d_res,
 }
 
 __device__  void scanDownStepForBlock(      unsigned int* const d_res,
+                                      const unsigned int        maxDisp,
                                       const unsigned int        size) {
     unsigned int prevId;
     unsigned int prevValue;
@@ -195,7 +196,7 @@ __device__  void scanDownStepForBlock(      unsigned int* const d_res,
         return;
     }
 
-    scanDownStepDevice(d_res, size, myId);
+    scanDownStepDevice(d_res, maxDisp, myId);
 }
 
 __global__  void blellochScan(const unsigned int* const d_in,
@@ -217,13 +218,13 @@ __global__  void blellochScan(const unsigned int* const d_in,
         unsigned int interval = size/ ssize;
         if (myId == tid && myId < ssize) { //исполняем только внутри одного блока
             sdata[myId] = d_res[myId * interval + interval - 1];
-            scanReduceForBlock(sdata, ssize, ssize, myId);
+            scanReduceForBlock(sdata, MAX_THREADS, ssize, myId);
 
             __syncthreads();
             sdata[ssize-1] = 0;
 
             __syncthreads();
-            scanDownStepForBlock(sdata, ssize);
+            scanDownStepForBlock(sdata, MAX_THREADS, ssize);
 
             __syncthreads();
             d_res[myId * interval + interval - 1] = sdata[myId];
@@ -415,7 +416,7 @@ void your_sort(unsigned int* const d_inputVals,
   for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += NUM_BITS) {
       unsigned int mask = (NUM_BINS - 1) << i;
 
-      clear<<<(numElems+MAX_THREADS-1)/MAX_THREADS, MAX_THREADS>>>(d_ov,numElems);
+      clear <<<numBlocksForElements, MAX_THREADS>>> (d_ov,numElems);
 
       for (unsigned int j = 0; j < NUM_BINS; ++j) {
           //checkCudaErrors(cudaMemset(d_temp, 0,  sizeof(unsigned int) * alignedBuferElems));
