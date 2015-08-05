@@ -52,14 +52,29 @@ void displayCudaBufferWindow(const unsigned int* const d_buf,
                              const size_t              numElems,
                              const size_t              from,
                              const size_t              to) {
-  unsigned int *buf = new unsigned int[numElems];
-  checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
-  for (int i = from ; i < to; ++i) {
-      std::cout << std::hex << buf[i] << " " << std::endl;
-  }
-  std::cout << std::endl;
+    unsigned int *buf = new unsigned int[numElems];
+    checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
+    for (int i = from ; i < to; ++i) {
+        std::cout << std::hex << buf[i] << " " << std::endl;
+    }
+    std::cout << std::endl;
 
-  delete[] buf;
+    delete[] buf;
+}
+
+void displayReducedArray(const unsigned int* const d_buf,
+                         const size_t              size) {
+    int ssize = size / MAX_THREADS;
+    unsigned int *buf = new unsigned int[numElems];
+    checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * size, cudaMemcpyDeviceToHost));
+    if (ssize > 1) {
+        int interval = size / ssize;
+
+        std::cout << std::hex << "REDUCED" << std::endl;
+        for (int myId = 0; myId < ssize; ++myId) {
+            std::cout << std::dec << buf[myId * interval + interval - 1] << " " << std::endl;
+        }
+    }
 }
 
 void displayCudaBuffer(const unsigned int* const d_buf,
@@ -434,11 +449,12 @@ void your_sort(unsigned int* const d_inputVals,
 
           blellochScan         <<<numBlocksForAligned, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>
                        (d_temp, d_temp1, alignedBuferElems);
-          blellochScanDownstep <<<numBlocksForAligned, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>
-                       (d_temp, d_temp1, alignedBuferElems);
+          //blellochScanDownstep <<<numBlocksForAligned, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>
+          //             (d_temp, d_temp1, alignedBuferElems);
 
           std::cout << "scan " << std::endl;
-          displayCudaBuffer(d_temp1, elemstoDisplay);
+          displayCudaBuffer(d_temp1,   elemstoDisplay);
+          displayReducedArray(d_temp1, alignedBuferElems);
           unsigned int max = displayCudaBufferMax(d_temp1, alignedBuferElems);
 
           if (max > numElems) {
