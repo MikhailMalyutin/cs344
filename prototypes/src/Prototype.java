@@ -22,6 +22,16 @@ public class Prototype {
         System.out.println("checksum=" + checksum);
     }
 
+    private static void displayReducedArray(int[] d_res, int size) {
+        int ssize = size / MAX_THREADS;
+        if (ssize > 1) {
+            int interval = size/ ssize;
+            for (int myId = 0; myId < ssize; ++myId) {
+                System.out.println(d_res[myId * interval + interval - 1]);
+            }
+        }
+    }
+
     private static void scanReduceForBlock(int d_res[],
                                            int initialS, int size) {
         int prevId;
@@ -51,13 +61,13 @@ public class Prototype {
 
         for (int s = initialS; s >= 2; s /= 2) {
             for (int myId = 0; myId < maxSize; ++myId) {
-                prevId = myId - s / 2;
-                prevValue = (myId >= s / 2) ? d_res[prevId] : 0;
-                myValue = d_res[myId];
+                prevId    = myId - s / 2;
+                prevValue = (prevId >= 0) ? d_res[prevId] : 0;
+                myValue   =                 d_res[myId];
 
-                if (((myId + 1) % s) == 0 && myId >= s / 2) {
+                if (((myId + 1) % s) == 0 && prevId >= 0) {
                     d_res[prevId] = myValue;
-                    d_res[myId] = myValue + prevValue;
+                    d_res[myId]   = myValue + prevValue;
                 }
             }
         }
@@ -83,9 +93,9 @@ public class Prototype {
             for (int myId = 0; myId < ssize; ++myId) {
                 sdata[myId] = d_res[myId * interval + interval - 1];
             }
-            scanReduceForBlock(sdata, MAX_THREADS, ssize);
+            scanReduceForBlock(sdata, ssize, ssize);
             sdata[ssize - 1] = 0;
-            scanDownStepForBlock(sdata, MAX_THREADS, ssize);
+            scanDownStepForBlock(sdata, ssize, ssize);
             for (int myId = 0; myId < ssize; ++myId) {
                 d_res[myId * interval + interval - 1] = sdata[myId];
             }
@@ -97,7 +107,7 @@ public class Prototype {
                               int i,
                    int numElems, int NUM_BINS) {
         for (int myId = 0; myId < numElems; ++myId) {
-            if (myId < NUM_BINS) { //очистка буфера результата
+            if (myId < NUM_BINS) { //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 d_res[myId] = 0;
             }
             int binId = (d_in[myId] & mask) >> i;
@@ -206,9 +216,10 @@ public class Prototype {
             mapToBin(d_iv, d_temp, mask, i, j, numElems);
 
             blellochScan(d_temp, d_temp1, alignedBuferElems);
-            blellochScanDownstep(d_temp, d_temp1, alignedBuferElems);
+           // blellochScanDownstep(d_temp, d_temp1, alignedBuferElems);
 
             displayArray(d_temp1);
+            displayReducedArray(d_temp1, alignedBuferElems);
 
             resetMapToBin(d_iv, d_temp1, mask, i, j, numElems);
 
