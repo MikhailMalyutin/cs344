@@ -65,7 +65,7 @@ void displayCudaBufferWindow(const unsigned int* const d_buf,
 void displayReducedArray(const unsigned int* const d_buf,
                          const size_t              size) {
     int ssize = size / MAX_THREADS;
-    unsigned int *buf = new unsigned int[numElems];
+    unsigned int *buf = new unsigned int[size];
     checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * size, cudaMemcpyDeviceToHost));
     if (ssize > 1) {
         int interval = size / ssize;
@@ -201,17 +201,8 @@ __device__  void scanDownStepDevice(      unsigned int* const d_res,
 
 __device__  void scanDownStepForBlock(      unsigned int* const d_res,
                                       const unsigned int        maxDisp,
-                                      const unsigned int        size) {
-    unsigned int prevId;
-    unsigned int prevValue;
-    unsigned int myValue;
-
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
-    if (myId >= size || tid != myId) {
-        return;
-    }
-
+                                      const unsigned int        size,
+                                      const unsigned int        myId) {
     scanDownStepDevice(d_res, maxDisp, myId);
 }
 
@@ -220,7 +211,7 @@ __global__  void blellochScan(const unsigned int* const d_in,
                               const size_t              size) {
     extern __shared__ unsigned int sdata[];
     unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
     if (myId >=size) {
         return;
     }
@@ -229,21 +220,26 @@ __global__  void blellochScan(const unsigned int* const d_in,
     d_res[size-1] = 0;
 
     __syncthreads();
-    unsigned int ssize = size / MAX_THREADS; //сколько элементов будет в прореженном массиве
+    int ssize = size / MAX_THREADS; //сколько элементов будет в прореженном массиве
     if (ssize > 1) {
+
         unsigned int interval = size/ ssize;
-        if (myId == tid && myId < ssize) { //исполняем только внутри одного блока
-            sdata[myId] = d_res[myId * interval + interval - 1];
-            scanReduceForBlock(sdata, ssize, ssize, myId);
+        const unsigned int reducedId = myId / interval;
+        int myCurrentIndex = reducedId * interval + interval - 1;
+        if (myId > 0 && myId % myCurrentIndex == 0) { //исполняем только внутри одного блока
+            sdata[reducedId] = d_res[myCurrentIndex];
+
+            __syncthreads();
+            scanReduceForBlock(sdata, ssize, ssize, reducedId);
 
             __syncthreads();
             sdata[ssize-1] = 0;
 
-            __syncthreads();
-            scanDownStepForBlock(sdata, ssize, ssize);
+            __syncthreads(); //todo баг из за того, что не срабатывает!!!!
+            scanDownStepForBlock(sdata, ssize, ssize, reducedId);
 
             __syncthreads();
-            d_res[myId * interval + interval - 1] = sdata[myId];
+            d_res[myId] = sdata[reducedId];
         }
     }
 }
