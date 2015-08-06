@@ -242,6 +242,7 @@ __global__  void blellochBlockScan(const unsigned int* const d_in,
     if (myId >=size) {
         return;
     }
+    d_res[myId] = d_in[myId];
     scanReduceForBlock(d_res, size, size, myId);
 
     __syncthreads();
