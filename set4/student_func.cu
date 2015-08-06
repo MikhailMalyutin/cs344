@@ -199,13 +199,6 @@ __device__  void scanDownStepDevice(      unsigned int* const d_res,
     }
 }
 
-__device__  void scanDownStepForBlock(      unsigned int* const d_res,
-                                      const unsigned int        maxDisp,
-                                      const unsigned int        size,
-                                      const unsigned int        myId) {
-    scanDownStepDevice(d_res, maxDisp, myId);
-}
-
 __global__  void compact(const unsigned int* const d_in,
                                unsigned int* const d_res,
                          const size_t              size,
@@ -255,7 +248,7 @@ __global__  void blellochBlockScan(const unsigned int* const d_in,
     d_res[size-1] = 0;
 
     __syncthreads();
-     scanDownStepForBlock(d_res, size, size, myId);
+     scanDownStepDevice(d_res, size, myId);
 }
 
 __global__  void blellochBigScan(const unsigned int* const d_in,
@@ -279,6 +272,7 @@ __global__  void blellochBigScanDownstep(      unsigned int* const d_res,
         return;
     }
     unsigned int initialS = myMin(MAX_THREADS, size);
+    d_res[size - 1] = 0;
     scanDownStepDevice(d_res, initialS, myId);
 }
 
