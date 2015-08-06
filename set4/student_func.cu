@@ -206,9 +206,61 @@ __device__  void scanDownStepForBlock(      unsigned int* const d_res,
     scanDownStepDevice(d_res, maxDisp, myId);
 }
 
-__global__  void blellochScan(const unsigned int* const d_in,
-                                    unsigned int* const d_res,
-                              const size_t              size) {
+__global__  void compact(const unsigned int* const d_in,
+                               unsigned int* const d_res,
+                         const size_t              size,
+                         const int                 ssize) {
+    unsigned int tid  = threadIdx.x;
+    unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
+    if (myId >=size) {
+        return;
+    }
+    unsigned int interval = size/ ssize;
+    const unsigned int reducedId = myId / interval;
+    int myCurrentIndex = reducedId * interval + interval - 1;
+    if (myId > 0 && myId % myCurrentIndex == 0) { //исполняем только внутри одного блока
+        d_res[reducedId] = d_res[myCurrentIndex];
+    }
+}
+
+__global__  void enlarge(const unsigned int* const d_in,
+                               unsigned int* const d_res,
+                         const size_t              size,
+                         const int                 ssize) {
+    unsigned int tid  = threadIdx.x;
+    unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
+    if (myId >=size) {
+        return;
+    }
+    __syncthreads();
+    unsigned int interval = size/ ssize;
+    const unsigned int reducedId = myId / interval;
+    int myCurrentIndex = reducedId * interval + interval - 1;
+    if (myId > 0 && myId % myCurrentIndex == 0) { //исполняем только внутри одного блока
+        d_res[myCurrentIndex] = d_res[reducedId];
+    }
+}
+
+__global__  void blellochBlockScan(const unsigned int* const d_in,
+                                         unsigned int* const d_res,
+                                   const size_t              size) {
+    unsigned int tid  = threadIdx.x;
+    unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
+    if (myId >=size) {
+        return;
+    }
+    scanReduceForBlock(d_res, size, size, myId);
+
+    __syncthreads();
+    d_res[size-1] = 0;
+
+    __syncthreads();
+     scanDownStepForBlock(d_res, size, size, myId);
+}
+
+__global__  void blellochBigScan(const unsigned int* const d_in,
+                                       unsigned int* const d_res,
+                                 const size_t              size) {
     extern __shared__ unsigned int sdata[];
     unsigned int tid  = threadIdx.x;
     unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
@@ -217,36 +269,10 @@ __global__  void blellochScan(const unsigned int* const d_in,
     }
     d_res[myId] = d_in[myId];
     scanReduceForBlock(d_res, myMin(MAX_THREADS, size), size, myId);
-    d_res[size-1] = 0;
-
-    __syncthreads();
-    int ssize = size / MAX_THREADS; //сколько элементов будет в прореженном массиве
-    if (ssize > 1) {
-
-        unsigned int interval = size/ ssize;
-        const unsigned int reducedId = myId / interval;
-        int myCurrentIndex = reducedId * interval + interval - 1;
-        if (myId > 0 && myId % myCurrentIndex == 0) { //исполняем только внутри одного блока
-            sdata[reducedId] = d_res[myCurrentIndex];
-
-            __syncthreads();
-            scanReduceForBlock(sdata, ssize, ssize, reducedId);
-
-            __syncthreads();
-            sdata[ssize-1] = 0;
-
-            __syncthreads(); //todo баг из за того, что не срабатывает!!!!
-            scanDownStepForBlock(sdata, ssize, ssize, reducedId);
-
-            __syncthreads();
-            d_res[myId] = sdata[reducedId];
-        }
-    }
 }
 
-__global__  void blellochScanDownstep(const unsigned int* const d_in,
-                                            unsigned int* const d_res,
-                                      const size_t              size) {
+__global__  void blellochBigScanDownstep(      unsigned int* const d_res,
+                                         const size_t              size) {
     unsigned int tid = threadIdx.x;
     unsigned int myId = tid + (blockDim.x) * blockIdx.x;
     if (myId >= size) {
@@ -403,16 +429,19 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_ip = d_inputPos;
   unsigned int* d_ov = d_outputVals;
   unsigned int* d_op = d_outputPos;
+  unsigned int* sdata;
 
   numElems = 16383;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
+  int ssize             = alignedBuferElems / MAX_THREADS; //сколько элементов будет в прореженном массиве
 
   checkCudaErrors(cudaMalloc((void **) &d_binScan,      NUM_BINS          * sizeof(unsigned int)));
   checkCudaErrors(cudaMalloc((void **) &d_binHistogram, NUM_BINS          * sizeof(unsigned int)));
   checkCudaErrors(cudaMalloc((void **) &d_temp,         alignedBuferElems * sizeof(unsigned int)));
   checkCudaErrors(cudaMalloc((void **) &d_temp1,        alignedBuferElems * sizeof(unsigned int)));
+  checkCudaErrors(cudaMalloc((void **) &sdata,          ssize             * sizeof(unsigned int)));
 
   const unsigned int numBlocksForAligned  = (alignedBuferElems + MAX_THREADS - 1) / MAX_THREADS;
   const unsigned int numBlocksForElements = (numElems          + MAX_THREADS - 1) / MAX_THREADS;
@@ -424,6 +453,8 @@ void your_sort(unsigned int* const d_inputVals,
 
   std::cout << "d_inputVals " << std::endl;
   displayCudaBuffer(d_inputVals, elemstoDisplay);
+
+
 
   //a simple radix sort - only guaranteed to work for NUM_BITS that are multiples of 2
   for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += NUM_BITS) {
@@ -443,21 +474,22 @@ void your_sort(unsigned int* const d_inputVals,
           //displayCudaBufferWindow(d_temp, numElems, 2000, 2010);
           //displayCudaBufferMax(d_temp, alignedBuferElems);
 
-          blellochScan         <<<numBlocksForAligned, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>
+          blellochBigScan <<<numBlocksForAligned, MAX_THREADS>>>
                        (d_temp, d_temp1, alignedBuferElems);
-          //blellochScanDownstep <<<numBlocksForAligned, MAX_THREADS, MAX_THREADS * sizeof(unsigned int)>>>
-          //             (d_temp, d_temp1, alignedBuferElems);
+          if (ssize > 1) {
+              compact <<<numBlocksForAligned, MAX_THREADS>>>
+                       (d_temp1, sdata, alignedBuferElems, ssize);
+              blellochBlockScan <<<1, ssize>>> (sdata, sdata, ssize);
+              enlarge <<<numBlocksForAligned, MAX_THREADS>>>
+                       (sdata, d_temp1, alignedBuferElems, ssize);
+          }
+          blellochBigScanDownstep <<<numBlocksForAligned, MAX_THREADS>>>
+                       (d_temp1, alignedBuferElems);
 
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1,   elemstoDisplay);
           displayReducedArray(d_temp1, alignedBuferElems);
           unsigned int max = displayCudaBufferMax(d_temp1, alignedBuferElems);
-
-          if (max > numElems) {
-              std::cout << "ERROR " << std::endl;
-              displayCudaBufferWindow(d_temp,  numElems, 6391, 6403);
-              displayCudaBufferWindow(d_temp1, numElems, 6391, 6403);
-          }
 
           resetMapToBin <<<numBlocksForElements, MAX_THREADS>>>
                         (d_iv, d_temp1, mask, i, j, numElems);
@@ -479,10 +511,8 @@ void your_sort(unsigned int* const d_inputVals,
 
       //perform exclusive prefix sum (scan) on binHistogram to get starting
       //location for each bin
-      blellochScan         <<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>
+      blellochBlockScan <<<1, NUM_BINS>>>
                            (d_binHistogram, d_binScan, NUM_BINS);
-      blellochScanDownstep <<<1, NUM_BINS, NUM_BINS * sizeof(unsigned int)>>>
-                           (d_binScan,      d_binScan, NUM_BINS);
       std::cout << "d_binScan " << std::endl;
       displayCudaBuffer(d_binScan, NUM_BINS);
 
@@ -520,6 +550,7 @@ void your_sort(unsigned int* const d_inputVals,
   checkCudaErrors(cudaFree(d_binHistogram));
   checkCudaErrors(cudaFree(d_temp));
   checkCudaErrors(cudaFree(d_temp1));
+  checkCudaErrors(cudaFree(sdata));
 }
 
 
