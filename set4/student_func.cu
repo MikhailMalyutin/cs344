@@ -143,7 +143,7 @@ __global__ void histogram(const unsigned int* const d_in,
                           const size_t              numElems) {
     unsigned int tid  = threadIdx.x;
     unsigned int myId = tid + blockDim.x * blockIdx.x;
-    if (myId < NUM_BINS) { //очистка буфера результата
+    if (myId < NUM_BINS) { //РѕС‡РёСЃС‚РєР° Р±СѓС„РµСЂР° СЂРµР·СѓР»СЊС‚Р°С‚Р°
        d_res[myId] = 0;
     }
     if (myId >= numElems) {
@@ -211,7 +211,7 @@ __global__  void compact(const unsigned int* const d_in,
     unsigned int interval = size/ ssize;
     const unsigned int reducedId = myId / interval;
     int myCurrentIndex = reducedId * interval + interval - 1;
-    if (myId > 0 && myId % myCurrentIndex == 0) { //исполняем только внутри одного блока
+    if (myId > 0 && myId % myCurrentIndex == 0) { //РёСЃРїРѕР»РЅСЏРµРј С‚РѕР»СЊРєРѕ РІРЅСѓС‚СЂРё РѕРґРЅРѕРіРѕ Р±Р»РѕРєР°
         d_res[reducedId] = d_res[myCurrentIndex];
     }
 }
@@ -229,7 +229,7 @@ __global__  void enlarge(const unsigned int* const d_in,
     unsigned int interval = size/ ssize;
     const unsigned int reducedId = myId / interval;
     int myCurrentIndex = reducedId * interval + interval - 1;
-    if (myId > 0 && myId % myCurrentIndex == 0) { //исполняем только внутри одного блока
+    if (myId > 0 && myId % myCurrentIndex == 0) { //РёСЃРїРѕР»РЅСЏРµРј С‚РѕР»СЊРєРѕ РІРЅСѓС‚СЂРё РѕРґРЅРѕРіРѕ Р±Р»РѕРєР°
         d_res[myCurrentIndex] = d_res[reducedId];
     }
 }
@@ -279,10 +279,10 @@ __global__  void blellochBigScanDownstep(      unsigned int* const d_res,
 
 
 /**
-d_binScan - для каждого элемента корзины,
-содержит смещение, куда нужно положить результат, в случае если он попал в эту корзину
-d_vals_dst - содержит смещение для данного id для конкретногй корзины
-d_vals_dst также будет содержать результат
+d_binScan - РґР»СЏ РєР°Р¶РґРѕРіРѕ СЌР»РµРјРµРЅС‚Р° РєРѕСЂР·РёРЅС‹,
+СЃРѕРґРµСЂР¶РёС‚ СЃРјРµС‰РµРЅРёРµ, РєСѓРґР° РЅСѓР¶РЅРѕ РїРѕР»РѕР¶РёС‚СЊ СЂРµР·СѓР»СЊС‚Р°С‚, РІ СЃР»СѓС‡Р°Рµ РµСЃР»Рё РѕРЅ РїРѕРїР°Р» РІ СЌС‚Сѓ РєРѕСЂР·РёРЅСѓ
+d_vals_dst - СЃРѕРґРµСЂР¶РёС‚ СЃРјРµС‰РµРЅРёРµ РґР»СЏ РґР°РЅРЅРѕРіРѕ id РґР»СЏ РєРѕРЅРєСЂРµС‚РЅРѕРіР№ РєРѕСЂР·РёРЅС‹
+d_vals_dst С‚Р°РєР¶Рµ Р±СѓРґРµС‚ СЃРѕРґРµСЂР¶Р°С‚СЊ СЂРµР·СѓР»СЊС‚Р°С‚
 **/
 __global__ void gather(const unsigned int* const d_vals_src,
                        const unsigned int* const d_pos_src,
@@ -306,9 +306,9 @@ __global__ void gather(const unsigned int* const d_vals_src,
 }
 
 /**
-d_binScan - для каждого элемента корзины,
-содержит смещение, куда нужно положить результат, в случае если он попал в эту корзину
-d_disp_src - содержит смещение для данного id для конкретногй корзины
+d_binScan - РґР»СЏ РєР°Р¶РґРѕРіРѕ СЌР»РµРјРµРЅС‚Р° РєРѕСЂР·РёРЅС‹,
+СЃРѕРґРµСЂР¶РёС‚ СЃРјРµС‰РµРЅРёРµ, РєСѓРґР° РЅСѓР¶РЅРѕ РїРѕР»РѕР¶РёС‚СЊ СЂРµР·СѓР»СЊС‚Р°С‚, РІ СЃР»СѓС‡Р°Рµ РµСЃР»Рё РѕРЅ РїРѕРїР°Р» РІ СЌС‚Сѓ РєРѕСЂР·РёРЅСѓ
+d_disp_src - СЃРѕРґРµСЂР¶РёС‚ СЃРјРµС‰РµРЅРёРµ РґР»СЏ РґР°РЅРЅРѕРіРѕ id РґР»СЏ РєРѕРЅРєСЂРµС‚РЅРѕРіР№ РєРѕСЂР·РёРЅС‹
 **/
 __global__ void getNewIndexes(const unsigned int* const d_vals_src,
                               const unsigned int* const d_disp_src,
@@ -323,8 +323,8 @@ __global__ void getNewIndexes(const unsigned int* const d_vals_src,
     if (myId >= numElems) {
         return;
     }
-    unsigned int myIdOffset = d_disp_src[myId]; //у нас свой ид, для нашего ид определяем смещение,
-    //кладем в локальную переменную
+    unsigned int myIdOffset = d_disp_src[myId]; //Сѓ РЅР°СЃ СЃРІРѕР№ РёРґ, РґР»СЏ РЅР°С€РµРіРѕ РёРґ РѕРїСЂРµРґРµР»СЏРµРј СЃРјРµС‰РµРЅРёРµ,
+    //РєР»Р°РґРµРј РІ Р»РѕРєР°Р»СЊРЅСѓСЋ РїРµСЂРµРјРµРЅРЅСѓСЋ
     unsigned int binId = (d_vals_src[myId] & mask) >> i;
 
     __syncthreads();
@@ -430,7 +430,7 @@ void your_sort(unsigned int* const d_inputVals,
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
-  int ssize             = alignedBuferElems / MAX_THREADS; //сколько элементов будет в прореженном массиве
+  int ssize             = alignedBuferElems / MAX_THREADS; //СЃРєРѕР»СЊРєРѕ СЌР»РµРјРµРЅС‚РѕРІ Р±СѓРґРµС‚ РІ РїСЂРѕСЂРµР¶РµРЅРЅРѕРј РјР°СЃСЃРёРІРµ
 
   checkCudaErrors(cudaMalloc((void **) &d_binScan,      NUM_BINS          * sizeof(unsigned int)));
   checkCudaErrors(cudaMalloc((void **) &d_binHistogram, NUM_BINS          * sizeof(unsigned int)));
@@ -472,14 +472,14 @@ void your_sort(unsigned int* const d_inputVals,
           blellochBigScan <<<numBlocksForAligned, MAX_THREADS>>>
                        (d_temp, d_temp1, alignedBuferElems);
           if (ssize > 1) {
-              compact <<<numBlocksForAligned, MAX_THREADS>>>
-                       (d_temp1, sdata, alignedBuferElems, ssize);
-              blellochBlockScan <<<1, ssize>>> (sdata, sdata, ssize);
-              enlarge <<<numBlocksForAligned, MAX_THREADS>>>
-                       (sdata, d_temp1, alignedBuferElems, ssize);
+              //compact <<<numBlocksForAligned, MAX_THREADS>>>
+              //         (d_temp1, sdata, alignedBuferElems, ssize);
+              //blellochBlockScan <<<1, ssize>>> (sdata, sdata, ssize);
+              //enlarge <<<numBlocksForAligned, MAX_THREADS>>>
+              //         (sdata, d_temp1, alignedBuferElems, ssize);
           }
-          blellochBigScanDownstep <<<numBlocksForAligned, MAX_THREADS>>>
-                       (d_temp1, alignedBuferElems);
+          //blellochBigScanDownstep <<<numBlocksForAligned, MAX_THREADS>>>
+          //             (d_temp1, alignedBuferElems);
 
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1,   elemstoDisplay);
