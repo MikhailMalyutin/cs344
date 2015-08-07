@@ -208,11 +208,11 @@ __global__  void compact(const unsigned int* const d_in,
     if (myId >=size) {
         return;
     }
-    unsigned int interval = size/ ssize;
+    unsigned int interval = size / ssize;
     const unsigned int reducedId = myId / interval;
     int myCurrentIndex = reducedId * interval + interval - 1;
     if (myId > 0 && myId % myCurrentIndex == 0) { //исполняем только внутри одного блока
-        d_res[reducedId] = d_res[myCurrentIndex];
+        d_res[reducedId] = d_in[myCurrentIndex];
     }
 }
 
@@ -230,7 +230,7 @@ __global__  void enlarge(const unsigned int* const d_in,
     const unsigned int reducedId = myId / interval;
     int myCurrentIndex = reducedId * interval + interval - 1;
     if (myId > 0 && myId % myCurrentIndex == 0) { //исполняем только внутри одного блока
-        d_res[myCurrentIndex] = d_res[reducedId];
+        d_res[myCurrentIndex] = d_in[reducedId];
     }
 }
 
@@ -472,14 +472,18 @@ void your_sort(unsigned int* const d_inputVals,
           blellochBigScan <<<numBlocksForAligned, MAX_THREADS>>>
                        (d_temp, d_temp1, alignedBuferElems);
           if (ssize > 1) {
-              //compact <<<numBlocksForAligned, MAX_THREADS>>>
-              //         (d_temp1, sdata, alignedBuferElems, ssize);
-              //blellochBlockScan <<<1, ssize>>> (sdata, sdata, ssize);
-              //enlarge <<<numBlocksForAligned, MAX_THREADS>>>
-              //         (sdata, d_temp1, alignedBuferElems, ssize);
+              compact <<<numBlocksForAligned, MAX_THREADS>>>
+                       (d_temp1, sdata, alignedBuferElems, ssize);
+              std::cout << "compact " << std::endl;
+              displayCudaBuffer(sdata,  ssize);
+              blellochBlockScan <<<1, ssize>>> (sdata, sdata, ssize);
+              std::cout << "blellochBlockScan " << std::endl;
+              displayCudaBuffer(sdata,  ssize);
+              enlarge <<<numBlocksForAligned, MAX_THREADS>>>
+                       (sdata, d_temp1, alignedBuferElems, ssize);
           }
-          //blellochBigScanDownstep <<<numBlocksForAligned, MAX_THREADS>>>
-          //             (d_temp1, alignedBuferElems);
+          blellochBigScanDownstep <<<numBlocksForAligned, MAX_THREADS>>>
+                       (d_temp1, alignedBuferElems);
 
           std::cout << "scan " << std::endl;
           displayCudaBuffer(d_temp1,   elemstoDisplay);
