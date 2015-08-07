@@ -263,6 +263,7 @@ __global__  void blellochBigScan(const unsigned int* const d_in,
     }
     d_res[myId] = d_in[myId];
     scanReduceForBlock(d_res, myMin(MAX_THREADS, size), size, myId);
+    d_res[size - 1] = 0;
 }
 
 __global__  void blellochBigScanDownstep(      unsigned int* const d_res,
@@ -273,7 +274,6 @@ __global__  void blellochBigScanDownstep(      unsigned int* const d_res,
         return;
     }
     unsigned int initialS = myMin(MAX_THREADS, size);
-    d_res[size - 1] = 0;
     scanDownStepDevice(d_res, initialS, myId);
 }
 
