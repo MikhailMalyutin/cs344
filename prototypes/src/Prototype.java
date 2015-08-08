@@ -7,7 +7,7 @@ public class Prototype {
         int max = 0;
         int maxIndex = 0;
         int checksum = 0;
-        for (int i=0 ; i < array.length; ++i) {
+        for (int i = 0; i < array.length; ++i) {
             int cur = array[i];
             checksum += cur;
             if (i > 8191) {
@@ -24,7 +24,7 @@ public class Prototype {
 
     private static void displayCheckSum(int[] array) {
         int checksum = 0;
-        for (int i=0 ; i < array.length; ++i) {
+        for (int i = 0; i < array.length; ++i) {
             int cur = array[i];
             checksum += cur;
         }
@@ -34,7 +34,7 @@ public class Prototype {
     private static void displayReducedArray(int[] d_res, int size) {
         int ssize = size / MAX_THREADS;
         if (ssize > 1) {
-            int interval = size/ ssize;
+            int interval = size / ssize;
             for (int myId = 0; myId < ssize; ++myId) {
                 System.out.println(d_res[myId * interval + interval - 1]);
             }
@@ -48,14 +48,14 @@ public class Prototype {
         int nextId;
         int nextValue;
 
-        for (int s = 1; s <= initialS/2; s *= 2) {
-            for (int myId = 0; myId < size; ++ myId) {
+        for (int s = 1; s <= initialS / 2; s *= 2) {
+            for (int myId = 0; myId < size; ++myId) {
                 prevId = myId;
                 prevValue = d_res[prevId];
                 nextId = myId + s;
                 nextValue = nextId < size ? d_res[nextId] : 0;
 
-                if (((nextId + 1) % (s*2)) == 0 && (nextId < size)) {
+                if (((nextId + 1) % (s * 2)) == 0 && (nextId < size)) {
                     d_res[nextId] = prevValue + nextValue;
                 }
             }
@@ -70,22 +70,22 @@ public class Prototype {
 
         for (int s = initialS; s >= 2; s /= 2) {
             for (int myId = 0; myId < maxSize; ++myId) {
-                prevId    = myId - s / 2;
+                prevId = myId - s / 2;
                 prevValue = (prevId >= 0) ? d_res[prevId] : 0;
-                myValue   =                 d_res[myId];
+                myValue = d_res[myId];
 
                 if (((myId + 1) % s) == 0 && prevId >= 0) {
                     d_res[prevId] = myValue;
-                    d_res[myId]   = myValue + prevValue;
+                    d_res[myId] = myValue + prevValue;
                 }
             }
         }
     }
 
     public static void blellochScan(int d_in[],
-                               int d_res[],
-                               int size) {
-        for (int myId = 0; myId < size; ++ myId) {
+                                    int d_res[],
+                                    int size) {
+        for (int myId = 0; myId < size; ++myId) {
             if (myId >= size) {
                 return;
             }
@@ -97,7 +97,7 @@ public class Prototype {
 
         int ssize = size / MAX_THREADS;
         if (ssize > 1) {
-            int interval = size/ ssize;
+            int interval = size / ssize;
             int sdata[] = new int[ssize];
             for (int myId = 0; myId < ssize; ++myId) {
                 sdata[myId] = d_res[myId * interval + interval - 1];
@@ -112,45 +112,45 @@ public class Prototype {
     }
 
     static void histogram(int[] d_in, int[] d_res,
-                              int mask,
-                              int i,
-                   int numElems, int NUM_BINS) {
+                          int mask,
+                          int i,
+                          int numElems, int NUM_BINS) {
         for (int myId = 0; myId < numElems; ++myId) {
             if (myId < NUM_BINS) { //������� ������ ����������
                 d_res[myId] = 0;
             }
             int binId = (d_in[myId] & mask) >> i;
-            d_res[binId]+=1;
+            d_res[binId] += 1;
         }
     }
 
     static int getNearest(int number) {
         int result = 1;
-        while( result < number ) {
+        while (result < number) {
             result <<= 1;
         }
         return result;
     }
 
     static void mapToBin(int[] d_vals_src, int[] d_vals_dst,
-                              int mask,
-                              int i,
-                              int mappedBean,
-                              int numElems) {
+                         int mask,
+                         int i,
+                         int mappedBean,
+                         int numElems) {
 
-        for (int myId =0; myId < numElems; ++myId) {
+        for (int myId = 0; myId < numElems; ++myId) {
             int beanId = (d_vals_src[myId] & mask) >> i;
             d_vals_dst[myId] = (beanId == mappedBean) ? 1 : 0;
         }
     }
 
     static void resetMapToBin(int[] d_vals_src,
-                                  int[] d_vals_dst,
-                                  int mask,
-                                  int i,
-                                  int mappedBean,
-                                  int numElems) {
-        for (int myId =0; myId < numElems; ++myId) {
+                              int[] d_vals_dst,
+                              int mask,
+                              int i,
+                              int mappedBean,
+                              int numElems) {
+        for (int myId = 0; myId < numElems; ++myId) {
             int beanId = (d_vals_src[myId] & mask) >> i;
             if (beanId != mappedBean) {
                 d_vals_dst[myId] = 0;
@@ -159,26 +159,26 @@ public class Prototype {
     }
 
     static void sum(int[] d_src,
-             int[] d_dst,
-             int numElems) {
-        for (int myId =0; myId < numElems; ++myId) {
+                    int[] d_dst,
+                    int numElems) {
+        for (int myId = 0; myId < numElems; ++myId) {
             d_dst[myId] = d_src[myId] + d_dst[myId];
         }
     }
 
     static void gather(int[] d_vals_src,
-                int[] d_pos_src,
-                int[] d_vals_dst,
-                int[] d_pos_dst,
-                int[] d_binScan,
-                int mask,
-                int i,
-                int numElems) {
+                       int[] d_pos_src,
+                       int[] d_vals_dst,
+                       int[] d_pos_dst,
+                       int[] d_binScan,
+                       int mask,
+                       int i,
+                       int numElems) {
 
         int[] pos = new int[d_vals_dst.length];
         copy(d_vals_dst, pos, numElems);
 
-        for (int myId = 0 ;myId < numElems; ++myId) {
+        for (int myId = 0; myId < numElems; ++myId) {
             int myIdOffset = pos[myId];
 
             int binId = (d_vals_src[myId] & mask) >> i;
@@ -191,11 +191,10 @@ public class Prototype {
     }
 
     static void your_sort(int d_inputVals[],
-                   int d_inputPos[],
-                   int d_outputVals[],
-                   int d_outputPos[],
-                   int numElems)
-    {
+                          int d_inputPos[],
+                          int d_outputVals[],
+                          int d_outputPos[],
+                          int numElems) {
         int[] d_binScan;
         int[] d_binHistogram;
         int[] d_temp;
@@ -214,38 +213,38 @@ public class Prototype {
 
         //a simple radix sort - only guaranteed to work for NUM_BITS that are multiples of 2
         for (int i = 0; i < 8 * 4; i += NUM_BITS) {
-        int mask = (NUM_BINS - 1) << i;
+            int mask = (NUM_BINS - 1) << i;
 
-        clear(d_ov,numElems);
+            clear(d_ov, numElems);
 
-        for (int j = 0; j < NUM_BINS; ++j) {
-            clear(d_temp, alignedBuferElems);
-            clear(d_temp1, alignedBuferElems);
+            for (int j = 0; j < NUM_BINS; ++j) {
+                clear(d_temp, alignedBuferElems);
+                clear(d_temp1, alignedBuferElems);
 
-            mapToBin(d_iv, d_temp, mask, i, j, numElems);
+                mapToBin(d_iv, d_temp, mask, i, j, numElems);
 
-            blellochScan(d_temp, d_temp1, alignedBuferElems);
-            blellochScanDownstep(d_temp, d_temp1, alignedBuferElems);
+                blellochScan(d_temp, d_temp1, alignedBuferElems);
+                blellochScanDownstep(d_temp, d_temp1, alignedBuferElems);
 
-            displayArray(d_temp1);
-            displayReducedArray(d_temp1, alignedBuferElems);
+                displayArray(d_temp1);
+                displayReducedArray(d_temp1, alignedBuferElems);
 
-            resetMapToBin(d_iv, d_temp1, mask, i, j, numElems);
+                resetMapToBin(d_iv, d_temp1, mask, i, j, numElems);
 
-            sum(d_temp1,d_ov,numElems);
+                sum(d_temp1, d_ov, numElems);
+            }
+
+            histogram(d_iv, d_binHistogram, mask, i, numElems, NUM_BINS);
+
+            blellochScan(d_binHistogram, d_binScan, NUM_BINS);
+            blellochScanDownstep(d_binScan, d_binScan, NUM_BINS);
+
+            gather(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
+
+            //swap the buffers (pointers only)
+            swap(d_ov, d_iv);
+            swap(d_op, d_ip);
         }
-
-        histogram(d_iv, d_binHistogram, mask, i, numElems, NUM_BINS);
-
-        blellochScan(d_binHistogram, d_binScan, NUM_BINS);
-        blellochScanDownstep(d_binScan, d_binScan, NUM_BINS);
-
-        gather(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
-
-        //swap the buffers (pointers only)
-        swap(d_ov, d_iv);
-        swap(d_op, d_ip);
-    }
 
         //we did an even number of iterations, need to copy from input buffer into output
         copy(d_iv, d_ov, numElems);
@@ -271,13 +270,13 @@ public class Prototype {
     }
 
     private static void clear(int[] d_ov, int numElems) {
-        for (int i = 0; i<numElems; ++i) {
+        for (int i = 0; i < numElems; ++i) {
             d_ov[i] = 0;
         }
     }
 
     public static void main(String[] args) {
-        int smallData[] = {1,2};
+        int smallData[] = {1, 2};
         int smallResult[] = {0, 0};
         //blellochScan(smallData, smallResult, smallResult.length);
         //scanDownStepForBlock(smallResult, MAX_THREADS, smallResult.length);
@@ -300,24 +299,24 @@ public class Prototype {
                 1,
                 0,
                 /**0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-                0,
-                1,
-                0,
-                0,
-                1,
-                1**/
+                 1,
+                 0,
+                 0,
+                 0,
+                 0,
+                 0,
+                 1,
+                 0,
+                 0,
+                 1,
+                 0,
+                 0,
+                 1,
+                 1**/
         };
         int alignedBuferElems = getNearest(inDataUnwr.length);
         int inData[] = new int[alignedBuferElems];
-        for (int i=0; i<inDataUnwr.length; ++i) {
+        for (int i = 0; i < inDataUnwr.length; ++i) {
             inData[i] = inDataUnwr[i];
         }
         int outData[] = new int[alignedBuferElems];
@@ -329,13 +328,13 @@ public class Prototype {
         int sortVal[] = getUnsortedSeq(numElems);
         int resData[] = new int[sortData.length];
         int resVal[] = new int[sortData.length];
-       // clear(sortData, sortData.length);
+        // clear(sortData, sortData.length);
         your_sort(sortData, sortVal, resData, resVal, sortData.length);
     }
 
     private static int[] getUnsortedSeq(int numElems) {
         int[] result = new int[numElems];
-        for (int i = 0; i< numElems; ++i) {
+        for (int i = 0; i < numElems; ++i) {
             result[i] = numElems - i;
         }
         return result;
