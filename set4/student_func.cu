@@ -437,7 +437,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_op = d_outputPos;
   unsigned int* sdata;
 
-  numElems = 13000;//32;//16;//18000;
+  numElems = 16383;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);

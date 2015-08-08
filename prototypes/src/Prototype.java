@@ -329,7 +329,7 @@ public class Prototype {
         //blellochScan(inData, outData, alignedBuferElems);
         //scanDownStepForBlock(outData, MAX_THREADS, alignedBuferElems);
         System.out.println(outData);
-        int numElems = 13000;
+        int numElems = 16383;
         int sortData[] = getUnsortedSeq(numElems);
         int sortVal[] = getUnsortedSeq(numElems);
         int resData[] = new int[sortData.length];
