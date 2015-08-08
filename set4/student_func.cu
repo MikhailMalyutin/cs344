@@ -437,7 +437,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_op = d_outputPos;
   unsigned int* sdata;
 
-  numElems = 16383;//32;//16;//18000;
+  //numElems = 16383;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
@@ -452,7 +452,7 @@ void your_sort(unsigned int* const d_inputVals,
   const unsigned int numBlocksForAligned  = (alignedBuferElems + MAX_THREADS - 1) / MAX_THREADS;
   const unsigned int numBlocksForElements = (numElems          + MAX_THREADS - 1) / MAX_THREADS;
 
-  fill10 <<<numBlocksForElements, MAX_THREADS>>> (d_iv, numElems);
+  //fill10 <<<numBlocksForElements, MAX_THREADS>>> (d_iv, numElems);
 
   std::cout << "numElems " << numElems << std::endl;
   std::cout << "NUM_BINS " << NUM_BINS << std::endl;
