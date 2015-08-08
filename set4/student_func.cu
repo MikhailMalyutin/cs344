@@ -437,7 +437,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_op = d_outputPos;
   unsigned int* sdata;
 
-  numElems = 16383;//32;//16;//18000;
+  numElems = 13000;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
@@ -534,11 +534,14 @@ void your_sort(unsigned int* const d_inputVals,
                     (d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
       //std::cout << "after getNewIndexes " << std::endl;
       //displayCudaBuffer(d_new_index, elemstoDisplay);
+      std::cout << "before gather " << std::endl;
+      //displayCudaBuffer(d_ov, elemstoDisplay);
+      displayCheckSum(d_iv, numElems);
       gather <<<numBlocksForElements, MAX_THREADS>>>
              (d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
       std::cout << "after gather " << std::endl;
       //displayCudaBuffer(d_ov, elemstoDisplay);
-      displayCheckSum(d_ov, elemstoDisplay);
+      displayCheckSum(d_ov, numElems);
 
       //swap the buffers (pointers only)
       std::swap(d_ov, d_iv);

@@ -59,7 +59,7 @@ public class Prototype {
                     d_res[nextId] = prevValue + nextValue;
                 }
             }
-            System.out.print(d_res);
+            //System.out.print(d_res);
         }
     }
 
@@ -187,7 +187,7 @@ public class Prototype {
             d_vals_dst[newIndex] = d_vals_src[myId];
             d_pos_dst[newIndex] = d_pos_src[myId];
         }
-        System.out.print(d_vals_dst);
+        //System.out.print(d_vals_dst);
     }
 
     static void your_sort(int d_inputVals[],
@@ -226,12 +226,14 @@ public class Prototype {
                 blellochScan(d_temp, d_temp1, alignedBuferElems);
                 blellochScanDownstep(d_temp, d_temp1, alignedBuferElems);
 
-                displayArray(d_temp1);
-                displayReducedArray(d_temp1, alignedBuferElems);
+                //displayArray(d_temp1);
+                //displayReducedArray(d_temp1, alignedBuferElems);
 
                 resetMapToBin(d_iv, d_temp1, mask, i, j, numElems);
 
                 sum(d_temp1, d_ov, numElems);
+                System.out.println("sum");
+                displayCheckSum(d_ov);
             }
 
             histogram(d_iv, d_binHistogram, mask, i, numElems, NUM_BINS);
@@ -239,7 +241,11 @@ public class Prototype {
             blellochScan(d_binHistogram, d_binScan, NUM_BINS);
             blellochScanDownstep(d_binScan, d_binScan, NUM_BINS);
 
+            System.out.println("before gather");
+            displayCheckSum(d_iv);
             gather(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
+            System.out.println("after gather");
+            displayCheckSum(d_ov);
 
             //swap the buffers (pointers only)
             swap(d_ov, d_iv);
@@ -323,7 +329,7 @@ public class Prototype {
         //blellochScan(inData, outData, alignedBuferElems);
         //scanDownStepForBlock(outData, MAX_THREADS, alignedBuferElems);
         System.out.println(outData);
-        int numElems = 16383;
+        int numElems = 13000;
         int sortData[] = getUnsortedSeq(numElems);
         int sortVal[] = getUnsortedSeq(numElems);
         int resData[] = new int[sortData.length];
