@@ -216,7 +216,7 @@ public class Prototype {
             mapToBin(d_iv, d_temp, mask, i, j, numElems);
 
             blellochScan(d_temp, d_temp1, alignedBuferElems);
-           // blellochScanDownstep(d_temp, d_temp1, alignedBuferElems);
+            blellochScanDownstep(d_temp, d_temp1, alignedBuferElems);
 
             displayArray(d_temp1);
             displayReducedArray(d_temp1, alignedBuferElems);
@@ -241,6 +241,9 @@ public class Prototype {
         //we did an even number of iterations, need to copy from input buffer into output
         copy(d_iv, d_ov, numElems);
         copy(d_ip, d_op, numElems);
+
+        displayArray(d_ov);
+        displayReducedArray(d_ov, alignedBuferElems);
     }
 
     private static void copy(int[] d_ip, int[] d_op, int numElems) {
@@ -312,8 +315,9 @@ public class Prototype {
         //blellochScan(inData, outData, alignedBuferElems);
         //scanDownStepForBlock(outData, MAX_THREADS, alignedBuferElems);
         System.out.println(outData);
-        int sortData[] = getUnsortedSeq(16383);
-        int sortVal[] = getUnsortedSeq(16383);
+        int numElems = 13000;//16383;
+        int sortData[] = getUnsortedSeq(numElems);
+        int sortVal[] = getUnsortedSeq(numElems);
         int resData[] = new int[sortData.length];
         int resVal[] = new int[sortData.length];
        // clear(sortData, sortData.length);

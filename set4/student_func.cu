@@ -131,7 +131,7 @@ __global__ void fill10 (      unsigned int* const d_dst,
     if (myId >= numElems) {
         return;
     }
-    d_dst[myId] = (myId + 1) % 2;
+    d_dst[myId] = numElems - myId);
 }
 
 //ALGORITHMS-------------------------------------------------------------------
@@ -426,7 +426,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_op = d_outputPos;
   unsigned int* sdata;
 
-  numElems = 16383;//32;//16;//18000;
+  numElems = 13000;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
