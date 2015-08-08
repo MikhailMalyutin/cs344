@@ -131,7 +131,7 @@ __global__ void fill10 (      unsigned int* const d_dst,
     if (myId >= numElems) {
         return;
     }
-    d_dst[myId] = numElems - myId);
+    d_dst[myId] = numElems - myId;
 }
 
 //ALGORITHMS-------------------------------------------------------------------
@@ -426,7 +426,7 @@ void your_sort(unsigned int* const d_inputVals,
   unsigned int* d_op = d_outputPos;
   unsigned int* sdata;
 
-  numElems = 13000;//32;//16;//18000;
+  numElems = 16383;//32;//16;//18000;
   int elemstoDisplay = 16;
 
   int alignedBuferElems = getNearest(numElems);
@@ -448,8 +448,6 @@ void your_sort(unsigned int* const d_inputVals,
 
   std::cout << "d_inputVals " << std::endl;
   displayCudaBuffer(d_inputVals, elemstoDisplay);
-
-
 
   //a simple radix sort - only guaranteed to work for NUM_BITS that are multiples of 2
   for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += NUM_BITS) {
@@ -533,7 +531,8 @@ void your_sort(unsigned int* const d_inputVals,
       std::swap(d_ov, d_iv);
       std::swap(d_op, d_ip);
   }
-
+  std::cout << "FINISHED " << std::endl;
+  std::cout << "COPY " << std::endl;
   //we did an even number of iterations, need to copy from input buffer into output
   copy <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_ov, numElems);
   copy <<<numBlocksForElements, MAX_THREADS>>> (d_ip, d_op, numElems);
