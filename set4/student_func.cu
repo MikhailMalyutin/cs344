@@ -483,60 +483,62 @@ void your_sort(unsigned int* const d_inputVals,
           if (ssize > 1) {
               compact <<<numBlocksForAligned, MAX_THREADS>>>
                        (d_temp1, sdata, alignedBuferElems, ssize);
-              std::cout << "compact " << std::endl;
-              displayCudaBuffer(sdata,  ssize);
+              //std::cout << "compact " << std::endl;
+              //displayCudaBuffer(sdata,  ssize);
               blellochBlockScan <<<1, ssize>>> (sdata, sdata, ssize);
-              std::cout << "blellochBlockScan " << std::endl;
-              displayCudaBuffer(sdata,  ssize);
+              //std::cout << "blellochBlockScan " << std::endl;
+              //displayCudaBuffer(sdata,  ssize);
               enlarge <<<numBlocksForAligned, MAX_THREADS>>>
                        (sdata, d_temp1, alignedBuferElems, ssize);
           }
           blellochBigScanDownstep <<<numBlocksForAligned, MAX_THREADS>>>
                        (d_temp1, alignedBuferElems);
 
-          std::cout << "scan " << std::endl;
-          displayCudaBuffer(d_temp1,   elemstoDisplay);
-          displayReducedArray(d_temp1, alignedBuferElems);
-          unsigned int max = displayCudaBufferMax(d_temp1, alignedBuferElems);
+          //std::cout << "scan " << std::endl;
+          //displayCudaBuffer(d_temp1,   elemstoDisplay);
+          //displayReducedArray(d_temp1, alignedBuferElems);
+          //unsigned int max = displayCudaBufferMax(d_temp1, alignedBuferElems);
 
           resetMapToBin <<<numBlocksForElements, MAX_THREADS>>>
                         (d_iv, d_temp1, mask, i, j, numElems);
-          std::cout << "resetMapToBin " << std::endl;
-          displayCudaBuffer(d_temp1, elemstoDisplay);
-          displayCudaBufferMax(d_temp1, numElems);
+          //std::cout << "resetMapToBin " << std::endl;
+          //displayCudaBuffer(d_temp1, elemstoDisplay);
+          //displayCudaBufferMax(d_temp1, numElems);
 
           sum <<<numBlocksForElements, MAX_THREADS>>>
               (d_temp1,d_ov,numElems);
           std::cout << "sum " << std::endl;
-          displayCudaBufferMax(d_ov, numElems);
-          displayCudaBuffer(d_ov, elemstoDisplay);
+          displayCheckSum(d_ov, numElems);
+          //displayCudaBufferMax(d_ov, numElems);
+          //displayCudaBuffer(d_ov, elemstoDisplay);
       }
 
       histogram <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_binHistogram, mask, i, numElems);
       //histogram<<<1, numElems>>>(d_iv, d_binHistogram, mask, i, numElems, NUM_BINS);
-      std::cout << "d_binHistogram " << std::endl;
-      displayCudaBuffer(d_binHistogram, NUM_BINS);
+      //std::cout << "d_binHistogram " << std::endl;
+      //displayCudaBuffer(d_binHistogram, NUM_BINS);
 
       //perform exclusive prefix sum (scan) on binHistogram to get starting
       //location for each bin
       blellochBlockScan <<<1, NUM_BINS>>>
                            (d_binHistogram, d_binScan, NUM_BINS);
-      std::cout << "d_binScan " << std::endl;
-      displayCudaBuffer(d_binScan, NUM_BINS);
+      //std::cout << "d_binScan " << std::endl;
+      //displayCudaBuffer(d_binScan, NUM_BINS);
 
       //Gather everything into the correct location
       //need to move vals and positions
       unsigned int* d_disp_src  = d_ov;
       unsigned int* d_new_index = d_op;
-      displayCudaBufferMax(d_disp_src, numElems);
+      //displayCudaBufferMax(d_disp_src, numElems);
       getNewIndexes <<<numBlocksForElements, MAX_THREADS>>>
                     (d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
-      std::cout << "after getNewIndexes " << std::endl;
-      displayCudaBuffer(d_new_index, elemstoDisplay);
+      //std::cout << "after getNewIndexes " << std::endl;
+      //displayCudaBuffer(d_new_index, elemstoDisplay);
       gather <<<numBlocksForElements, MAX_THREADS>>>
              (d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
       std::cout << "after gather " << std::endl;
-      displayCudaBuffer(d_ov, elemstoDisplay);
+      //displayCudaBuffer(d_ov, elemstoDisplay);
+      displayCheckSum(d_ov, elemstoDisplay);
 
       //swap the buffers (pointers only)
       std::swap(d_ov, d_iv);
