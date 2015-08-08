@@ -528,7 +528,7 @@ void your_sort(unsigned int* const d_inputVals,
       //Gather everything into the correct location
       //need to move vals and positions
       unsigned int* d_disp_src  = d_ov;
-      unsigned int* d_new_index = d_op;
+      unsigned int* d_new_index = d_temp;
       //displayCudaBufferMax(d_disp_src, numElems);
       getNewIndexes <<<numBlocksForElements, MAX_THREADS>>>
                     (d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);

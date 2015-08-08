@@ -195,12 +195,9 @@ public class Prototype {
                 int[] d_vals_dst,
                 int[] d_pos_dst,
                 int numElems) {
-        int[] pos = new int[d_vals_dst.length];
-        copy(d_new_index_src, pos, numElems);
-
         for (int myId = 0; myId < numElems; ++myId) {
 
-            int newIndex = pos[myId];
+            int newIndex = d_new_index_src[myId];
 
             d_vals_dst[newIndex] = d_vals_src[myId];
             d_pos_dst[newIndex] = d_pos_src[myId];
@@ -259,7 +256,7 @@ public class Prototype {
             blellochScanDownstep(d_binScan, d_binScan, NUM_BINS);
 
             int[] d_disp_src  = d_ov;
-            int[] d_new_index = d_op;
+            int[] d_new_index = d_temp;
 
             System.out.println("before gather");
             displayCheckSum(d_iv);
