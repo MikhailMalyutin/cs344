@@ -19,6 +19,15 @@ public class Prototype {
             }
         }
         System.out.println("max=" + max + ", idx = " + maxIndex);
+        displayCheckSum(array);
+    }
+
+    private static void displayCheckSum(int[] array) {
+        int checksum = 0;
+        for (int i=0 ; i < array.length; ++i) {
+            int cur = array[i];
+            checksum += cur;
+        }
         System.out.println("checksum=" + checksum);
     }
 
