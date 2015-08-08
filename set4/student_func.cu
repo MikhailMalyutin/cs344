@@ -451,12 +451,11 @@ void your_sort(unsigned int* const d_inputVals,
   for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += NUM_BITS) {
       unsigned int mask = (NUM_BINS - 1) << i;
 
-      clear <<<numBlocksForElements, MAX_THREADS>>> (d_ov,numElems);
+      checkCudaErrors(cudaMemset(d_ov,  0,  sizeof(unsigned int) * numElems));
 
       for (unsigned int j = 0; j < NUM_BINS; ++j) {
-          //checkCudaErrors(cudaMemset(d_temp, 0,  sizeof(unsigned int) * alignedBuferElems));
-          clear <<<numBlocksForAligned, MAX_THREADS>>> (d_temp,  alignedBuferElems);
-          clear <<<numBlocksForAligned, MAX_THREADS>>> (d_temp1, alignedBuferElems);
+          checkCudaErrors(cudaMemset(d_temp,  0,  sizeof(unsigned int) * alignedBuferElems));
+          checkCudaErrors(cudaMemset(d_temp1, 0,  sizeof(unsigned int) * alignedBuferElems));
 
           mapToBin <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_temp, mask, i, j, numElems);
           //std::cout << "mapToBin" << j << " " <<  mask << " " << i << std::endl;
