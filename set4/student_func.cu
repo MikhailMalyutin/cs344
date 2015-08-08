@@ -43,7 +43,7 @@
 
  */
 const unsigned int MAX_THREADS = 1024;
-const unsigned int NUM_BITS    = 1;
+const unsigned int NUM_BITS    = 2;
 const unsigned int NUM_BINS    = 1 << NUM_BITS;
 
 //HELPERS----------------------------------------------------------------------
@@ -162,7 +162,6 @@ __global__ void histogram(const unsigned int* const d_in,
     }
     unsigned int binId = (d_in[myId] & mask) >> i;
 
-    __syncthreads();
     atomicAdd(&(d_res[binId]), 1);
 }
 
@@ -236,7 +235,7 @@ __global__  void enlarge(const unsigned int* const d_in,
     if (myId >=size) {
         return;
     }
-    __syncthreads();
+
     unsigned int interval = size/ ssize;
     const unsigned int reducedId = myId / interval;
     int myCurrentIndex = reducedId * interval + interval - 1;
@@ -256,7 +255,6 @@ __global__  void blellochBlockScan(const unsigned int* const d_in,
     d_res[myId] = d_in[myId];
     scanReduceForBlock(d_res, size, size, myId);
 
-    __syncthreads();
     d_res[size-1] = 0;
 
     __syncthreads();
@@ -308,10 +306,8 @@ __global__ void gather(const unsigned int* const d_vals_src,
         return;
     }
 
-    __syncthreads();
     unsigned int newIndex = d_new_index_src[myId];
 
-    __syncthreads();
     d_vals_dst[newIndex] = d_vals_src[myId];
     d_pos_dst[newIndex]  = d_pos_src[myId];
 }
@@ -338,7 +334,6 @@ __global__ void getNewIndexes(const unsigned int* const d_vals_src,
     //кладем в локальную переменную
     unsigned int binId = (d_vals_src[myId] & mask) >> i;
 
-    __syncthreads();
     unsigned int offset   = d_binScan[binId];
     unsigned int newIndex = offset + myIdOffset;
     d_new_index_dst[myId] = newIndex;
@@ -454,11 +449,11 @@ void your_sort(unsigned int* const d_inputVals,
 
   //fill10 <<<numBlocksForElements, MAX_THREADS>>> (d_iv, numElems);
 
-  std::cout << "numElems " << numElems << std::endl;
-  std::cout << "NUM_BINS " << NUM_BINS << std::endl;
+  //std::cout << "numElems " << numElems << std::endl;
+  //std::cout << "NUM_BINS " << NUM_BINS << std::endl;
 
-  std::cout << "d_inputVals " << std::endl;
-  displayCudaBuffer(d_inputVals, elemstoDisplay);
+  //std::cout << "d_inputVals " << std::endl;
+  //displayCudaBuffer(d_inputVals, elemstoDisplay);
 
   //a simple radix sort - only guaranteed to work for NUM_BITS that are multiples of 2
   for (unsigned int i = 0; i < 8 * sizeof(unsigned int); i += NUM_BITS) {
@@ -507,8 +502,8 @@ void your_sort(unsigned int* const d_inputVals,
 
           sum <<<numBlocksForElements, MAX_THREADS>>>
               (d_temp1,d_ov,numElems);
-          std::cout << "sum " << std::endl;
-          displayCheckSum(d_ov, numElems);
+          //std::cout << "sum " << std::endl;
+          //displayCheckSum(d_ov, numElems);
           //displayCudaBufferMax(d_ov, numElems);
           //displayCudaBuffer(d_ov, elemstoDisplay);
       }
@@ -534,31 +529,31 @@ void your_sort(unsigned int* const d_inputVals,
                     (d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
       //std::cout << "after getNewIndexes " << std::endl;
       //displayCudaBuffer(d_new_index, elemstoDisplay);
-      std::cout << "before gather " << std::endl;
+      //std::cout << "before gather " << std::endl;
       //displayCudaBuffer(d_ov, elemstoDisplay);
-      displayCheckSum(d_iv, numElems);
+      //displayCheckSum(d_iv, numElems);
       gather <<<numBlocksForElements, MAX_THREADS>>>
              (d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
-      std::cout << "after gather " << std::endl;
+      //std::cout << "after gather " << std::endl;
       //displayCudaBuffer(d_ov, elemstoDisplay);
-      displayCheckSum(d_ov, numElems);
+      //displayCheckSum(d_ov, numElems);
 
       //swap the buffers (pointers only)
       std::swap(d_ov, d_iv);
       std::swap(d_op, d_ip);
   }
-  std::cout << "FINISHED " << std::endl;
-  std::cout << "COPY " << std::endl;
+  //std::cout << "FINISHED " << std::endl;
+  //std::cout << "COPY " << std::endl;
   //we did an even number of iterations, need to copy from input buffer into output
   copy <<<numBlocksForElements, MAX_THREADS>>> (d_iv, d_ov, numElems);
   copy <<<numBlocksForElements, MAX_THREADS>>> (d_ip, d_op, numElems);
 
-  std::cout << "d_outputVals " << std::endl;
-  displayCudaBuffer(d_outputVals, elemstoDisplay);
-  displayCudaBufferMax(d_outputVals, numElems);
-  std::cout << "d_inputVals " << std::endl;
-  displayCudaBuffer(d_inputVals, elemstoDisplay);
-  displayCudaBufferMax(d_inputVals, numElems);
+  //std::cout << "d_outputVals " << std::endl;
+  //displayCudaBuffer(d_outputVals, elemstoDisplay);
+  //displayCudaBufferMax(d_outputVals, numElems);
+  //std::cout << "d_inputVals " << std::endl;
+  //displayCudaBuffer(d_inputVals, elemstoDisplay);
+  //displayCudaBufferMax(d_inputVals, numElems);
 
   checkCudaErrors(cudaFree(d_binScan));
   checkCudaErrors(cudaFree(d_binHistogram));
