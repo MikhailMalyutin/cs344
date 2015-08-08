@@ -166,28 +166,45 @@ public class Prototype {
         }
     }
 
-    static void gather(int[] d_vals_src,
-                       int[] d_pos_src,
-                       int[] d_vals_dst,
-                       int[] d_pos_dst,
-                       int[] d_binScan,
-                       int mask,
-                       int i,
-                       int numElems) {
-
-        int[] pos = new int[d_vals_dst.length];
-        copy(d_vals_dst, pos, numElems);
-
+    /**
+     * d_binScan - для каждого элемента корзины,
+     * содержит смещение, куда нужно положить результат, в случае если он попал в эту корзину
+     * d_disp_src - содержит смещение для данного id для конкретногй корзины
+     **/
+    static void getNewIndexes(int[] d_vals_src,
+                              int[] d_disp_src,
+                              int[] d_binScan,
+                              int[] d_new_index_dst,
+                              int mask,
+                              int i,
+                              int numElems) {
         for (int myId = 0; myId < numElems; ++myId) {
-            int myIdOffset = pos[myId];
-
+            int myIdOffset = d_disp_src[myId]; //у нас свой ид, для нашего ид определяем смещение,
+            //кладем в локальную переменную
             int binId = (d_vals_src[myId] & mask) >> i;
+
             int offset = d_binScan[binId];
             int newIndex = offset + myIdOffset;
+            d_new_index_dst[myId] = newIndex;
+        }
+    }
+
+    static void gather(int[] d_vals_src,
+                int[] d_pos_src,
+                int[] d_new_index_src,
+                int[] d_vals_dst,
+                int[] d_pos_dst,
+                int numElems) {
+        int[] pos = new int[d_vals_dst.length];
+        copy(d_new_index_src, pos, numElems);
+
+        for (int myId = 0; myId < numElems; ++myId) {
+
+            int newIndex = pos[myId];
+
             d_vals_dst[newIndex] = d_vals_src[myId];
             d_pos_dst[newIndex] = d_pos_src[myId];
         }
-        //System.out.print(d_vals_dst);
     }
 
     static void your_sort(int d_inputVals[],
@@ -241,9 +258,15 @@ public class Prototype {
             blellochScan(d_binHistogram, d_binScan, NUM_BINS);
             blellochScanDownstep(d_binScan, d_binScan, NUM_BINS);
 
+            int[] d_disp_src  = d_ov;
+            int[] d_new_index = d_op;
+
             System.out.println("before gather");
             displayCheckSum(d_iv);
-            gather(d_iv, d_ip, d_ov, d_op, d_binScan, mask, i, numElems);
+            getNewIndexes
+                    (d_iv, d_disp_src, d_binScan, d_new_index, mask, i, numElems);
+            //displayArray(d_new_index);
+            gather(d_iv, d_ip, d_new_index, d_ov, d_op, numElems);
             System.out.println("after gather");
             displayCheckSum(d_ov);
 
