@@ -48,6 +48,11 @@ const unsigned int NUM_BINS    = 1 << NUM_BITS;
 
 //HELPERS----------------------------------------------------------------------
 
+__device__ unsigned int getMyId() {
+    unsigned int tid  = threadIdx.x;
+    return tid + blockDim.x * blockIdx.x;
+}
+
 void displayCudaBufferWindow(const unsigned int* const d_buf,
                              const size_t              numElems,
                              const size_t              from,
@@ -137,8 +142,7 @@ __device__ unsigned int myMin(const unsigned int a,
 
 __global__ void fill10 (      unsigned int* const d_dst,
                         const unsigned int numElems) {
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + blockDim.x * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId >= numElems) {
         return;
     }
@@ -152,8 +156,7 @@ __global__ void histogram(const unsigned int* const d_in,
                           const unsigned int        mask,
                           const unsigned int        i,
                           const size_t              numElems) {
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + blockDim.x * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId < NUM_BINS) { //очистка буфера результата
        d_res[myId] = 0;
     }
@@ -213,8 +216,7 @@ __global__  void compact(const unsigned int* const d_in,
                                unsigned int* const d_res,
                          const size_t              size,
                          const int                 ssize) {
-    unsigned int tid  = threadIdx.x;
-    unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId >=size) {
         return;
     }
@@ -230,8 +232,7 @@ __global__  void enlarge(const unsigned int* const d_in,
                                unsigned int* const d_res,
                          const size_t              size,
                          const int                 ssize) {
-    unsigned int tid  = threadIdx.x;
-    unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId >=size) {
         return;
     }
@@ -247,8 +248,7 @@ __global__  void enlarge(const unsigned int* const d_in,
 __global__  void blellochBlockScan(const unsigned int* const d_in,
                                          unsigned int* const d_res,
                                    const size_t              size) {
-    unsigned int tid  = threadIdx.x;
-    unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId >=size) {
         return;
     }
@@ -265,8 +265,7 @@ __global__  void blellochBigScan(const unsigned int* const d_in,
                                        unsigned int* const d_res,
                                  const size_t              size) {
     extern __shared__ unsigned int sdata[];
-    unsigned int tid  = threadIdx.x;
-    unsigned const int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId >=size) {
         return;
     }
@@ -277,8 +276,7 @@ __global__  void blellochBigScan(const unsigned int* const d_in,
 
 __global__  void blellochBigScanDownstep(      unsigned int* const d_res,
                                          const size_t              size) {
-    unsigned int tid = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId >= size) {
         return;
     }
@@ -299,8 +297,7 @@ __global__ void gather(const unsigned int* const d_vals_src,
                              unsigned int* const d_vals_dst,
                              unsigned int* const d_pos_dst,
                        const unsigned int        numElems) {
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
 
     if (myId >= numElems) {
         return;
@@ -324,8 +321,7 @@ __global__ void getNewIndexes(const unsigned int* const d_vals_src,
                               const unsigned int        mask,
                               const unsigned int        i,
                               const unsigned int        numElems) {
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
 
     if (myId >= numElems) {
         return;
@@ -361,8 +357,7 @@ __global__ void resetMapToBin(const unsigned int* const d_vals_src,
                               const unsigned int        i,
                               const unsigned int        mappedBean,
                               const unsigned int        numElems) {
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
 
     if (myId >= numElems) {
         return;
@@ -375,8 +370,7 @@ __global__ void resetMapToBin(const unsigned int* const d_vals_src,
 
 __global__ void clear(      unsigned int* const d_vals_dst,
                       const unsigned int        numElems) {
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + (blockDim.x) * blockIdx.x;
+    const unsigned int myId = getMyId();
 
     if (myId >= numElems) {
         return;
@@ -387,8 +381,7 @@ __global__ void clear(      unsigned int* const d_vals_dst,
 __global__ void copy(const unsigned int* const d_src,
                            unsigned int* const d_dst,
                      const unsigned int        numElems) {
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + blockDim.x * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId >= numElems) {
         return;
     }
@@ -398,8 +391,7 @@ __global__ void copy(const unsigned int* const d_src,
 __global__ void sum(const unsigned int* const d_src,
                           unsigned int* const d_dst,
                     const unsigned int numElems) {
-    unsigned int tid  = threadIdx.x;
-    unsigned int myId = tid + blockDim.x * blockIdx.x;
+    const unsigned int myId = getMyId();
     if (myId >= numElems) {
         return;
     }
