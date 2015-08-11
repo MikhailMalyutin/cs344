@@ -28,18 +28,31 @@
 #include "utils.h"
 #include "reference.cpp"
 
+const unsigned int MAX_THREADS = 1024;
+
+//HELPERS----------------------------------------------------------------------
+
+__device__ unsigned int getMyId() {
+    unsigned int tid  = threadIdx.x;
+    return tid + blockDim.x * blockIdx.x;
+}
+
+//MAIN--------------------------------------------------------------------
 
 __global__
 void yourHisto(const unsigned int* const vals, //INPUT
-               unsigned int* const histo,      //OUPUT
-               int numVals)
+                     unsigned int* const histo,      //OUPUT
+                              int        numVals)
 {
-  //TODO fill in this kernel to calculate the histogram
-  //as quickly as possible
+    const unsigned int myId = getMyId();
+    if (myId > numVals) {
+        return;
+    }
 
-  //Although we provide only one kernel skeleton,
-  //feel free to use more if it will help you
-  //write faster code
+    const unsigned int binId = vals[myId];
+
+    __syncthreads();
+    atomicAdd(&(histo[binId]), 1);
 }
 
 void computeHistogram(const unsigned int* const d_vals, //INPUT
@@ -47,13 +60,13 @@ void computeHistogram(const unsigned int* const d_vals, //INPUT
                       const unsigned int numBins,
                       const unsigned int numElems)
 {
-  //TODO Launch the yourHisto kernel
+  yourHisto<<<numElems/MAX_THREADS, numElems>>> (d_vals, d_histo, numElems);
 
   //if you want to use/launch more than one kernel,
   //feel free
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 
-  delete[] h_vals;
-  delete[] h_histo;
-  delete[] your_histo;*/
+ // delete[] h_vals;
+ // delete[] h_histo;
+ // delete[] your_histo;*/
 }
