@@ -60,7 +60,9 @@ void computeHistogram(const unsigned int* const d_vals, //INPUT
                       const unsigned int numBins,
                       const unsigned int numElems)
 {
-  yourHisto<<<numElems/MAX_THREADS, numElems>>> (d_vals, d_histo, numElems);
+  const unsigned int numBlocksForElements = (numElems + MAX_THREADS - 1) / MAX_THREADS;
+
+  yourHisto<<<numBlocksForElements, MAX_THREADS>>> (d_vals, d_histo, numElems);
 
   //if you want to use/launch more than one kernel,
   //feel free
