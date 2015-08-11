@@ -37,6 +37,87 @@ __device__ unsigned int getMyId() {
     return tid + blockDim.x * blockIdx.x;
 }
 
+void displayCudaBufferWindow(const unsigned int* const d_buf,
+                             const size_t              numElems,
+                             const size_t              from,
+                             const size_t              to) {
+    unsigned int *buf = new unsigned int[numElems];
+    checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
+    for (int i = from ; i < to; ++i) {
+        std::cout << std::dec << buf[i] << " " << std::endl;
+    }
+    std::cout << std::endl;
+
+    delete[] buf;
+}
+
+void displayReducedArray(const unsigned int* const d_buf,
+                         const size_t              size) {
+    int ssize = size / MAX_THREADS;
+    unsigned int *buf = new unsigned int[size];
+    checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * size, cudaMemcpyDeviceToHost));
+    if (ssize > 1) {
+        int interval = size / ssize;
+
+        std::cout << std::hex << "REDUCED" << std::endl;
+        for (int myId = 0; myId < ssize; ++myId) {
+            std::cout << std::dec << buf[myId * interval + interval - 1] << " " << std::endl;
+        }
+    }
+}
+
+void displayCudaBuffer(const unsigned int* const d_buf,
+                       const size_t              numElems) {
+  displayCudaBufferWindow(d_buf, numElems, 0, numElems);
+}
+
+void displayCheckSum(const unsigned int* const d_buf,
+                             const size_t              numElems) {
+  unsigned int *buf = new unsigned int[numElems];
+  checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
+  int checksum = 0;
+  for (int i = 0 ; i < numElems; ++i) {
+      checksum += buf[i];
+  }
+  std::cout << "checksum " << std::dec << checksum << std::endl;
+
+  delete[] buf;
+}
+
+unsigned int displayCudaBufferMax(const unsigned int* const d_buf,
+                                  const size_t              numElems) {
+  unsigned int *buf = new unsigned int[numElems];
+  checkCudaErrors(cudaMemcpy(buf,  d_buf,  sizeof(unsigned int) * numElems, cudaMemcpyDeviceToHost));
+  unsigned int max = buf[0];
+  unsigned int idx = 0;
+  for (int i = 0 ; i < numElems; ++i) {
+      if (max <= buf[i]) {
+          max = buf[i];
+          idx = i;
+      }
+  }
+  displayCheckSum(d_buf, numElems);
+  std::cout << "max " << std::dec << max << " idx " << idx << std::endl;
+  int begin = idx - 10;
+  if (begin < 0) begin = 0;
+
+  int lastIndex = idx + 10;
+  if (lastIndex > numElems) {
+      lastIndex = idx + 1;
+  }
+
+  displayCudaBufferWindow(d_buf, numElems, begin, lastIndex);
+  std::cout << "last " << std::endl;
+  if (numElems > 50) {
+      displayCudaBufferWindow(d_buf, numElems, numElems - 50, numElems);
+  } else {
+      displayCudaBufferWindow(d_buf, numElems, 0,             numElems);
+  }
+
+  delete[] buf;
+  return max;
+}
+
 //MAIN--------------------------------------------------------------------
 
 __global__
@@ -60,7 +141,10 @@ void computeHistogram(const unsigned int* const d_vals, //INPUT
                       const unsigned int numElems)
 {
   const unsigned int numBlocksForElements = (numElems + MAX_THREADS - 1) / MAX_THREADS;
-
+  std::cout << "numElems " << numElems << std::endl;
+  displayCudaBufferMax(d_vals, numElems);
+  std::cout << "numBins "  << numBins << std::endl;
+  displayCudaBufferMax(d_histo, numBins);
   yourHisto<<<numBlocksForElements, MAX_THREADS>>> (d_vals, d_histo, numElems);
 
   //if you want to use/launch more than one kernel,
