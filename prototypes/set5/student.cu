@@ -51,7 +51,6 @@ void yourHisto(const unsigned int* const vals, //INPUT
 
     const unsigned int binId = vals[myId];
 
-    __syncthreads();
     atomicAdd(&(histo[binId]), 1);
 }
 
