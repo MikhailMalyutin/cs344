@@ -118,6 +118,14 @@ unsigned int displayCudaBufferMax(const unsigned int* const d_buf,
   return max;
 }
 
+__device__ void blockHisto(const unsigned int* const vals,    //INPUT
+                                 unsigned int* const histo) { //OUPUT)
+    const unsigned int myId = getMyId();
+    const unsigned int binId = vals[myId];
+
+    atomicAdd(&(histo[binId]), 1);
+}
+
 //MAIN--------------------------------------------------------------------
 
 __global__
@@ -130,9 +138,7 @@ void yourHisto(const unsigned int* const vals, //INPUT
         return;
     }
 
-    const unsigned int binId = vals[myId];
-
-    atomicAdd(&(histo[binId]), 1);
+    blockHisto(vals, histo);
 }
 
 void computeHistogram(const unsigned int* const d_vals, //INPUT
@@ -150,6 +156,8 @@ void computeHistogram(const unsigned int* const d_vals, //INPUT
   //if you want to use/launch more than one kernel,
   //feel free
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
+  std::cout << "RESULT "  << numBins << std::endl;
+  displayCudaBufferMax(d_histo, numBins);
 
  // delete[] h_vals;
  // delete[] h_histo;
