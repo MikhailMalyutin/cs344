@@ -129,7 +129,22 @@ __device__ void blockHisto(const unsigned int* const vals,    //INPUT
 //MAIN--------------------------------------------------------------------
 
 __global__
-void yourHisto(const unsigned int* const vals, //INPUT
+void yourHistoSlow(const unsigned int* const vals,    //INPUT
+                         unsigned int* const histo,   //OUPUT
+                                  int        numVals)
+{
+    const unsigned int myId = getMyId();
+    if (myId > numVals) {
+        return;
+    }
+
+    const unsigned int binId = vals[myId];
+
+    atomicAdd(&(histo[binId]), 1);
+}
+
+__global__
+void yourHisto(const unsigned int* const vals,       //INPUT
                      unsigned int* const histo,      //OUPUT
                               int        numVals)
 {
@@ -144,15 +159,12 @@ void yourHisto(const unsigned int* const vals, //INPUT
     }
 
     sdata[tid] = 0;
-    __syncthreads();
 
+    __syncthreads();
     const unsigned int curVal     = vals[myId];
-//    if (tid != curVal) {
-//        return;
-//    }
     atomicAdd(&(sdata[curVal]), 1);
-    __syncthreads();
 
+    __syncthreads();
     atomicAdd(&(histo[tid]), sdata[tid]);
 }
 
@@ -162,17 +174,17 @@ void computeHistogram(const unsigned int* const d_vals,  //INPUT
                       const unsigned int        numElems)
 {
   const unsigned int numBlocksForElements = (numElems + MAX_THREADS - 1) / MAX_THREADS;
-  std::cout << "numElems " << numElems << std::endl;
-  displayCudaBufferMax(d_vals, numElems);
-  std::cout << "numBins "  << numBins << std::endl;
-  displayCudaBufferMax(d_histo, numBins);
+  //std::cout << "numElems " << numElems << std::endl;
+  //displayCudaBufferMax(d_vals, numElems);
+  //std::cout << "numBins "  << numBins << std::endl;
+  //displayCudaBufferMax(d_histo, numBins);
   yourHisto<<<numBlocksForElements, MAX_THREADS, MAX_THREADS*sizeof(unsigned int)>>> (d_vals, d_histo, numElems);
 
   //if you want to use/launch more than one kernel,
   //feel free
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
-  std::cout << "RESULT "  << numBins << std::endl;
-  displayCudaBufferMax(d_histo, numBins);
+  //std::cout << "RESULT "  << numBins << std::endl;
+  //displayCudaBufferMax(d_histo, numBins);
 
  // delete[] h_vals;
  // delete[] h_histo;
