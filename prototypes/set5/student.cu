@@ -165,7 +165,10 @@ void yourHisto(const unsigned int* const vals,       //INPUT
     atomicAdd(&(sdata[curVal]), 1);
 
     __syncthreads();
-    atomicAdd(&(histo[tid]), sdata[tid]);
+    const unsigned int blockHistoVal = sdata[tid];
+    if (blockHistoVal != 0) {
+        atomicAdd(&(histo[tid]), blockHistoVal);
+    }
 }
 
 void computeHistogram(const unsigned int* const d_vals,  //INPUT
