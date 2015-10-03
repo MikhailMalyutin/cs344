@@ -181,16 +181,15 @@ void yourHistoSerial(const unsigned int* const vals,       //INPUT
     const unsigned int tid        = threadIdx.x;
     const unsigned int blockId    = blockDim.x * blockIdx.x;
 
-    const unsigned int startBlockIndex = blockId * MAX_THREADS;
-    const          int elemensLeft     = numVals - startBlockIndex;
-    if (startBlockIndex >= numVals) {
+    const          int elemensLeft     = numVals - blockId;
+    if (blockId > numVals) {
         return;
     }
     const unsigned int elemsMax        = elemensLeft > MAX_THREADS ? MAX_THREADS : elemensLeft;
 
     unsigned int binValue = 0;
 
-    for (unsigned int i = startBlockIndex; i < startBlockIndex + elemsMax; ++i) {
+    for (unsigned int i = blockId; i < blockId + elemsMax; ++i) {
         const unsigned int curVal = vals[i];
         if (tid == curVal) {
             ++binValue;
