@@ -146,11 +146,14 @@ void yourHistoSlow(const unsigned int* const vals,    //INPUT
 __global__
 void yourHisto(const unsigned int* const vals,       //INPUT
                      unsigned int* const histo,      //OUPUT
-                              int        numVals)
+               const unsigned int        numVals,
+               const unsigned int        numBins)
 {
     extern __shared__ unsigned int sdata[];
 
-    const unsigned int tid        = threadIdx.x;
+    const unsigned int tidX       = threadIdx.x;
+    const unsigned int tidY       = threadIdx.y;
+    const unsigned int tid        = gridDim.y * tidY + tidX;
     const unsigned int blockId    = blockDim.x * blockIdx.x;
     const unsigned int myId       = tid + blockId;
 
@@ -162,6 +165,7 @@ void yourHisto(const unsigned int* const vals,       //INPUT
 
     __syncthreads();
     const unsigned int curVal     = vals[myId];
+    //sdata[curVal] = sdata[curVal] + 1;
     atomicAdd(&(sdata[curVal]), 1);
 
     __syncthreads();
@@ -207,12 +211,13 @@ void computeHistogram(const unsigned int* const d_vals,  //INPUT
                       const unsigned int        numBins,
                       const unsigned int        numElems)
 {
-  const unsigned int numBlocksForElements = (numElems + MAX_THREADS - 1) / MAX_THREADS;
+  const unsigned int numBlocksForElements = (numElems + numBins - 1) / numBins;
   //std::cout << "numElems " << numElems << std::endl;
   //displayCudaBufferMax(d_vals, numElems);
   //std::cout << "numBins "  << numBins << std::endl;
   //displayCudaBufferMax(d_histo, numBins);
-  yourHistoSerial<<<numBlocksForElements, MAX_THREADS, MAX_THREADS*sizeof(unsigned int)>>> (d_vals, d_histo, numElems);
+  dim3 block(MAX_THREADS, numBins/MAX_THREADS);
+  yourHisto<<<numBlocksForElements, block, numBins*sizeof(unsigned int)>>> (d_vals, d_histo, numElems, numBins);
 
   //if you want to use/launch more than one kernel,
   //feel free
