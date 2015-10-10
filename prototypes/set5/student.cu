@@ -152,18 +152,20 @@ void yourHisto(const unsigned int* const vals,       //INPUT
 {
     extern __shared__ unsigned int sdata[];
 
-    const unsigned int tidX       = threadIdx.x;
-    const unsigned int blockId    = blockDim.x * blockIdx.x;
-    const unsigned int myId       = tidX + blockId;
-    const unsigned int simdTid    = tidX % SIMD_THREADS;
-    const unsigned int simdBlock  = tidX / SIMD_THREADS;
-    const unsigned int tid        = simdBlock * SIMD_THREADS + simdTid;
+    const unsigned int tidX           = threadIdx.x;
+    const unsigned int blockId        = blockDim.x * blockIdx.x;
+    const unsigned int myId           = tidX + blockId;
+    const unsigned int simdTid        = tidX % SIMD_THREADS;
+    const unsigned int simdBlock      = tidX / SIMD_THREADS;
+    const unsigned int simdBlockStart = simdBlock * SIMD_THREADS;
+    const unsigned int tid            = simdBlockStart + simdTid;
+    const unsigned int s1idx          = numBins;
 
     if (myId > numVals) {
         return;
     }
 
-    sdata[tid] = 0;
+    sdata[tid]        = 0;
 
     __syncthreads();
     const unsigned int curVal     = vals[myId];
@@ -213,12 +215,26 @@ void computeHistogram(const unsigned int* const d_vals,  //INPUT
                       const unsigned int        numBins,
                       const unsigned int        numElems)
 {
-  const unsigned int numBlocksForElements = (numElems + MAX_THREADS - 1) / MAX_THREADS;
-  //std::cout << "numElems " << numElems << std::endl;
+  const unsigned int MAX_BLOCKS = 16;
+
+  const unsigned int LAYER_SIZE = MAX_BLOCKS * MAX_THREADS;
+  const unsigned int numBlocksForElements = (numElems + LAYER_SIZE - 1) / LAYER_SIZE;
+  std::cout << "numElems " << numElems << std::endl;
+  std::cout << "LAYER_SIZE " << LAYER_SIZE << std::endl;
+  std::cout << "numBlocksForElements " << numBlocksForElements << std::endl;
   //displayCudaBufferMax(d_vals, numElems);
   //std::cout << "numBins "  << numBins << std::endl;
   //displayCudaBufferMax(d_histo, numBins);
-  yourHisto<<<numBlocksForElements, MAX_THREADS, numBins*sizeof(unsigned int)>>> (d_vals, d_histo, numElems, numBins);
+
+  for (unsigned int i=0; i < numBlocksForElements; ++i) {
+      const unsigned int elems = (LAYER_SIZE * i + LAYER_SIZE < numElems)
+          ? LAYER_SIZE
+          : numElems - LAYER_SIZE * i;
+      std::cout << "elems "  << elems << std::endl;
+      std::cout << "lastIndex "  << LAYER_SIZE * i + elems << std::endl;
+      yourHisto<<<MAX_BLOCKS, MAX_THREADS, numBins*sizeof(unsigned int)>>> (d_vals + LAYER_SIZE * i, d_histo, elems, numBins);
+     // yourHistoSlow<<<1, MAX_THREADS>>> (d_vals + MAX_THREADS * i, d_histo, numElems);
+  }
 
   //if you want to use/launch more than one kernel,
   //feel free
