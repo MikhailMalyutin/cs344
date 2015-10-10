@@ -29,6 +29,7 @@
 #include "reference.cpp"
 
 const unsigned int MAX_THREADS = 1024;
+const unsigned int SIMD_THREADS = 32;
 
 //HELPERS----------------------------------------------------------------------
 
@@ -152,10 +153,11 @@ void yourHisto(const unsigned int* const vals,       //INPUT
     extern __shared__ unsigned int sdata[];
 
     const unsigned int tidX       = threadIdx.x;
-    const unsigned int tidY       = threadIdx.y;
-    const unsigned int tid        = gridDim.y * tidY + tidX;
     const unsigned int blockId    = blockDim.x * blockIdx.x;
-    const unsigned int myId       = tid + blockId;
+    const unsigned int myId       = tidX + blockId;
+    const unsigned int simdTid    = tidX % SIMD_THREADS;
+    const unsigned int simdBlock  = tidX / SIMD_THREADS;
+    const unsigned int tid        = simdBlock * SIMD_THREADS + simdTid;
 
     if (myId > numVals) {
         return;
@@ -211,13 +213,12 @@ void computeHistogram(const unsigned int* const d_vals,  //INPUT
                       const unsigned int        numBins,
                       const unsigned int        numElems)
 {
-  const unsigned int numBlocksForElements = (numElems + numBins - 1) / numBins;
+  const unsigned int numBlocksForElements = (numElems + MAX_THREADS - 1) / MAX_THREADS;
   //std::cout << "numElems " << numElems << std::endl;
   //displayCudaBufferMax(d_vals, numElems);
   //std::cout << "numBins "  << numBins << std::endl;
   //displayCudaBufferMax(d_histo, numBins);
-  dim3 block(MAX_THREADS, numBins/MAX_THREADS);
-  yourHisto<<<numBlocksForElements, block, numBins*sizeof(unsigned int)>>> (d_vals, d_histo, numElems, numBins);
+  yourHisto<<<numBlocksForElements, MAX_THREADS, numBins*sizeof(unsigned int)>>> (d_vals, d_histo, numElems, numBins);
 
   //if you want to use/launch more than one kernel,
   //feel free
