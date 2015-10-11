@@ -135,13 +135,11 @@ void yourHistoSlow(const unsigned int* const vals,    //INPUT
                                   int        numVals)
 {
     const unsigned int myId = getMyId();
-    if (myId > numVals) {
-        return;
+    if (myId <= numVals) {
+        const unsigned int binId = vals[myId];
+
+        atomicAdd(&(histo[binId]), 1);
     }
-
-    const unsigned int binId = vals[myId];
-
-    atomicAdd(&(histo[binId]), 1);
 }
 
 __global__
@@ -215,7 +213,7 @@ void computeHistogram(const unsigned int* const d_vals,  //INPUT
                       const unsigned int        numBins,
                       const unsigned int        numElems)
 {
-  const unsigned int MAX_BLOCKS = 16;
+  const unsigned int MAX_BLOCKS = 16384;
 
   const unsigned int LAYER_SIZE = MAX_BLOCKS * MAX_THREADS;
   const unsigned int numBlocksForElements = (numElems + LAYER_SIZE - 1) / LAYER_SIZE;
@@ -230,10 +228,11 @@ void computeHistogram(const unsigned int* const d_vals,  //INPUT
       const unsigned int elems = (LAYER_SIZE * i + LAYER_SIZE < numElems)
           ? LAYER_SIZE
           : numElems - LAYER_SIZE * i;
-      std::cout << "elems "  << elems << std::endl;
-      std::cout << "lastIndex "  << LAYER_SIZE * i + elems << std::endl;
-      yourHisto<<<MAX_BLOCKS, MAX_THREADS, numBins*sizeof(unsigned int)>>> (d_vals + LAYER_SIZE * i, d_histo, elems, numBins);
-     // yourHistoSlow<<<1, MAX_THREADS>>> (d_vals + MAX_THREADS * i, d_histo, numElems);
+      const unsigned int numBlocks = elems / MAX_THREADS;
+      //std::cout << "elems "  << elems << std::endl;
+      //std::cout << "lastIndex "  << LAYER_SIZE * i + elems << std::endl;
+      yourHisto<<<numBlocks, MAX_THREADS, numBins*sizeof(unsigned int)>>> (d_vals + LAYER_SIZE * i, d_histo, elems, numBins);
+      //yourHistoSlow<<<numBlocks, MAX_THREADS>>> (d_vals + LAYER_SIZE * i, d_histo, elems);
   }
 
   //if you want to use/launch more than one kernel,
