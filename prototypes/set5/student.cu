@@ -145,7 +145,6 @@ void yourHistoSlow(const unsigned int* const vals,    //INPUT
 __global__
 void yourHisto(const unsigned int* const vals,       //INPUT
                      unsigned int* const histo,      //OUPUT
-               const unsigned int        numVals,
                const unsigned int        numBins)
 {
     extern __shared__ unsigned int sdata[];
@@ -158,10 +157,6 @@ void yourHisto(const unsigned int* const vals,       //INPUT
     const unsigned int simdBlockStart = simdBlock * SIMD_THREADS;
     const unsigned int tid            = simdBlockStart + simdTid;
     const unsigned int s1idx          = numBins;
-
-    if (myId > numVals) {
-        return;
-    }
 
     sdata[tid]        = 0;
 
@@ -231,7 +226,7 @@ void computeHistogram(const unsigned int* const d_vals,  //INPUT
       const unsigned int numBlocks = elems / MAX_THREADS;
       //std::cout << "elems "  << elems << std::endl;
       //std::cout << "lastIndex "  << LAYER_SIZE * i + elems << std::endl;
-      yourHisto<<<numBlocks, MAX_THREADS, numBins*sizeof(unsigned int)>>> (d_vals + LAYER_SIZE * i, d_histo, elems, numBins);
+      yourHisto<<<numBlocks, MAX_THREADS, numBins*sizeof(unsigned int)>>> (d_vals + LAYER_SIZE * i, d_histo, numBins);
       //yourHistoSlow<<<numBlocks, MAX_THREADS>>> (d_vals + LAYER_SIZE * i, d_histo, elems);
   }
 
