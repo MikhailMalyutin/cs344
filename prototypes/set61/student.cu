@@ -70,9 +70,22 @@
 
 void your_blend(const uchar4* const h_sourceImg,  //IN
                 const size_t numRowsSource, const size_t numColsSource,
-                const uchar4* const h_destImg, //IN
-                uchar4* const h_blendedImg) //OUT
+                const uchar4* const h_destImg,    //IN
+                      uchar4* const h_blendedImg) //OUT
 {
+    uchar4* d_sourceImg;
+    uchar4* d_destImg;
+    uchar4* d_blendedImg;
+
+    const unsigned int devicePictureSize = numRowsSource * numColsSource * sizeof(uchar4);
+
+    checkCudaErrors(cudaMalloc((void **) &d_sourceImg,  devicePictureSize));
+    checkCudaErrors(cudaMalloc((void **) &d_destImg,    devicePictureSize));
+    checkCudaErrors(cudaMalloc((void **) &d_blendedImg, devicePictureSize));
+
+    checkCudaErrors(cudaMemcpy(d_sourceImg,  h_sourceImg,  devicePictureSize, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(d_destImg,    h_destImg,    devicePictureSize, cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(d_blendedImg, h_blendedImg, devicePictureSize, cudaMemcpyHostToDevice));
 
   /* To Recap here are the steps you need to implement
 
@@ -125,4 +138,7 @@ void your_blend(const uchar4* const h_sourceImg,  //IN
 
     checkResultsEps((unsigned char *)h_reference, (unsigned char *)h_blendedImg, 4 * srcSize, 2, .01);
     delete[] h_reference; */
+    checkCudaErrors(cudaFree(d_sourceImg));
+    checkCudaErrors(cudaFree(d_destImg));
+    checkCudaErrors(cudaFree(d_blendedImg));
 }
