@@ -30,6 +30,7 @@
 
 const unsigned int MAX_THREADS = 1024;
 const unsigned int SIMD_THREADS = 32;
+const unsigned int MAX_BLOCKS = MAX_THREADS / SIMD_THREADS;
 
 //HELPERS----------------------------------------------------------------------
 
@@ -147,7 +148,7 @@ void yourHisto(const unsigned int* const vals,       //INPUT
                      unsigned int* const histo,      //OUPUT
                const unsigned int        numBins)
 {
-    extern __shared__ unsigned int sdata[];
+    extern __shared__ unsigned char sdata[];
 
     const unsigned int tidX           = threadIdx.x;
     const unsigned int blockId        = blockDim.x * blockIdx.x;
@@ -158,48 +159,27 @@ void yourHisto(const unsigned int* const vals,       //INPUT
     const unsigned int tid            = simdBlockStart + simdTid;
     const unsigned int s1idx          = numBins;
 
-    sdata[tid]        = 0;
+    //for (unsigned int i = 0; i < MAX_BLOCKS; ++i) {
+        data[simdTid * numBins + tid] = 0;
+    //}
 
     __syncthreads();
     const unsigned int curVal     = vals[myId];
-    //sdata[curVal] = sdata[curVal] + 1;
-    atomicAdd(&(sdata[curVal]), 1);
+    const unsigned int smAdr = simdTid * numBins + curVal;
+    sdata[smAdr] = sdata[smAdr] + 1;
+    //atomicAdd(&(sdata[curVal]), 1);
 
     __syncthreads();
-    const unsigned int blockHistoVal = sdata[tid];
+    unsigned int blockHistoVal = 0;
+   // if (blockId == 0) {
+        for (unsigned int i = 0; i < MAX_BLOCKS; ++i) {
+            blockHistoVal += sdata[i * numBins + tid] = 0;
+        }
+    //}
+
+     //sdata[tid];
     if (blockHistoVal != 0) {
         atomicAdd(&(histo[tid]), blockHistoVal);
-    }
-}
-
-__global__
-void yourHistoSerial(const unsigned int* const vals,       //INPUT
-                           unsigned int* const histo,      //OUPUT
-                           unsigned int        numVals)
-{
-    extern __shared__ unsigned int sdata[];
-
-    const unsigned int tid        = threadIdx.x;
-    const unsigned int blockId    = blockDim.x * blockIdx.x;
-
-    const          int elemensLeft     = numVals - blockId;
-    if (blockId > numVals) {
-        return;
-    }
-    const unsigned int elemsMax        = elemensLeft > MAX_THREADS ? MAX_THREADS : elemensLeft;
-
-    unsigned int binValue = 0;
-
-    for (unsigned int i = blockId; i < blockId + elemsMax; ++i) {
-        const unsigned int curVal = vals[i];
-        if (tid == curVal) {
-            ++binValue;
-        }
-    }
-
-    __syncthreads();
-    if (binValue != 0) {
-        atomicAdd(&(histo[tid]), binValue);
     }
 }
 
@@ -226,7 +206,7 @@ void computeHistogram(const unsigned int* const d_vals,  //INPUT
       const unsigned int numBlocks = elems / MAX_THREADS;
       //std::cout << "elems "  << elems << std::endl;
       //std::cout << "lastIndex "  << LAYER_SIZE * i + elems << std::endl;
-      yourHisto<<<numBlocks, MAX_THREADS, numBins*sizeof(unsigned int)>>> (d_vals + LAYER_SIZE * i, d_histo, numBins);
+      yourHisto<<<numBlocks, MAX_THREADS, numBins*8*sizeof(unsigned int)>>> (d_vals + LAYER_SIZE * i, d_histo, numBins);
       //yourHistoSlow<<<numBlocks, MAX_THREADS>>> (d_vals + LAYER_SIZE * i, d_histo, elems);
   }
 
